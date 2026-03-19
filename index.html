@@ -320,24 +320,28 @@
                     </div>
                 </div>
                 <p class="project-description">
-                    A RAG-powered assistant that answers questions about SBA 7(a) loan regulations
-                    with full source attribution. Built end-to-end: document ingestion, intelligent
-                    chunking, vector embeddings, semantic retrieval with keyword boosting, and
-                    streaming LLM responses — all grounded in official SBA program documents.
+                    A multi-feature SBA lending intelligence app: RAG-powered Q&A with source attribution,
+                    an interactive knowledge graph explorer (287 entities, 289 relationships), and an
+                    entity linker that identifies and classifies domain terms in free text. Built end-to-end:
+                    document ingestion, intelligent chunking, LLM-based entity extraction, graph construction
+                    with NetworkX, and interactive visualization with pyvis.
                 </p>
                 <ul class="project-highlights">
-                    <li>Section-aware chunking with metadata preservation (document, page, section)</li>
+                    <li>Knowledge graph with 6 entity types extracted via structured LLM prompts</li>
+                    <li>Entity linker: NER + linking to canonical knowledge graph nodes</li>
                     <li>Hybrid retrieval: cosine similarity + domain-specific keyword boosting</li>
                     <li>Source attribution with relevance scoring — critical for compliance use cases</li>
-                    <li>Auto-indexing pipeline with idempotent ingestion</li>
+                    <li>Interactive graph visualization with type filtering and node inspection</li>
                 </ul>
                 <div class="tags">
                     <span class="tag">Python</span>
                     <span class="tag">OpenAI</span>
                     <span class="tag">ChromaDB</span>
                     <span class="tag">RAG</span>
+                    <span class="tag">Knowledge Graph</span>
+                    <span class="tag">Entity Linking</span>
+                    <span class="tag">NetworkX</span>
                     <span class="tag">Streamlit</span>
-                    <span class="tag">Vector Search</span>
                 </div>
             </div>
 
