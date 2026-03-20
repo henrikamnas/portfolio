@@ -320,18 +320,16 @@
                     </div>
                 </div>
                 <p class="project-description">
-                    An ML-powered predictive maintenance system that predicts Remaining Useful Life (RUL)
-                    of turbofan jet engines from NASA C-MAPSS sensor data. Features an interactive dark-themed
-                    dashboard where you can step through an engine's lifecycle cycle-by-cycle and watch
-                    risk levels change in real time. Built with evidence-based model selection:
-                    XGBoost with domain-informed feature engineering, not deep learning hype.
+                    Predicts when jet engines will fail based on sensor data — before they actually break.
+                    Trained on NASA's C-MAPSS dataset (100 simulated turbofan engines, 21 sensors each).
+                    The interactive demo lets you step through an engine's life cycle by cycle and
+                    watch the predicted remaining life update in real time.
                 </p>
                 <ul class="project-highlights">
-                    <li>288 engineered features from 14 sensors: rolling statistics, trend detection, cross-sensor ratios</li>
-                    <li>XGBoost regression (RMSE 15.4, CV 15.0±0.7) with SHAP explainability</li>
-                    <li>Custom Random Survival Forest outputting full survival probability curves</li>
-                    <li>Live prediction demo: cycle-by-cycle slider with risk gauges and SHAP waterfall</li>
-                    <li>Industrial dark theme dashboard — distinct from typical corporate BI tools</li>
+                    <li>Feature engineering on raw sensor data: rolling averages, trends, rate of change</li>
+                    <li>Two models compared: XGBoost (point estimates) and Survival Forest (probability curves)</li>
+                    <li>SHAP explanations showing which sensors drive each prediction</li>
+                    <li>Live demo with risk gauges that go from green to red as failure approaches</li>
                 </ul>
                 <div class="tags">
                     <span class="tag">Python</span>
