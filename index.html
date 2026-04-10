@@ -1,625 +1,1019 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Henrik Axelsson - AI & Data Platform Architect</title>
+    <title>Henrik Axelsson — AI & Data Platform Architect</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
+        /* ── THEME ── */
         :root {
-            --bg: #0f172a;
-            --bg-card: #1e293b;
-            --bg-card-hover: #263548;
-            --text: #e2e8f0;
-            --text-muted: #94a3b8;
-            --accent: #38bdf8;
-            --accent-2: #818cf8;
-            --accent-3: #34d399;
-            --border: #334155;
-            --tag-bg: rgba(56, 189, 248, 0.1);
-            --tag-text: #7dd3fc;
+            --font-heading: 'Space Grotesk', system-ui, sans-serif;
+            --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+            --font-mono: 'IBM Plex Mono', 'Consolas', monospace;
+            --sidebar-w: 260px;
+            --transition: 0.3s ease;
+        }
+
+        [data-theme="dark"] {
+            --bg: #111110;
+            --bg-alt: #1a1a18;
+            --text: #e8e8e3;
+            --text-muted: #888883;
+            --accent: #e8573a;
+            --border: #2a2a28;
+            --sidebar-bg: #0a0a09;
+            --sidebar-text: #b0b0a8;
+            --sidebar-heading: #e8e8e3;
+            --tag-bg: #1e1e1c;
+            --tag-text: #b0b0a8;
+            --marquee-bg: #0a0a09;
+            --metric-text: #e8e8e3;
+        }
+
+        [data-theme="light"] {
+            --bg: #f5f5f0;
+            --bg-alt: #eaeae5;
+            --text: #111110;
+            --text-muted: #555550;
+            --accent: #d04a2e;
+            --border: #d5d5d0;
+            --sidebar-bg: #111110;
+            --sidebar-text: #999;
+            --sidebar-heading: #e8e8e3;
+            --tag-bg: #e5e5e0;
+            --tag-text: #444;
+            --marquee-bg: #eaeae5;
+            --metric-text: #111110;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        html { scroll-behavior: smooth; }
+
         body {
-            font-family: 'Inter', -apple-system, sans-serif;
+            font-family: var(--font-body);
             background: var(--bg);
             color: var(--text);
             line-height: 1.6;
+            transition: background var(--transition), color var(--transition);
         }
 
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
+        /* ── SIDEBAR ── */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-w);
+            height: 100vh;
+            background: var(--sidebar-bg);
+            padding: 40px 28px;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            transition: background var(--transition);
+            border-right: 1px solid var(--border);
+        }
+
+        .sidebar-name {
+            font-family: var(--font-heading);
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--sidebar-heading);
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+
+        .sidebar-role {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--sidebar-text);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 32px;
+        }
+
+        .sidebar-status {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--sidebar-text);
+            margin-bottom: 36px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-status::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            background: #4ade80;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .sidebar nav {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-bottom: auto;
+        }
+
+        .sidebar nav a {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            padding: 8px 0;
+            transition: color 0.2s;
+        }
+
+        .sidebar nav a:hover { color: var(--sidebar-heading); }
+
+        .sidebar-links {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #2a2a28;
+        }
+
+        .sidebar-links a {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            padding: 6px 0;
+            transition: color 0.2s;
+        }
+
+        .sidebar-links a:hover { color: var(--sidebar-heading); }
+
+        .theme-toggle {
+            margin-top: 20px;
+            background: none;
+            border: 1px solid #333;
+            color: var(--sidebar-text);
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 8px 0;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--sidebar-heading);
+            color: var(--sidebar-heading);
+        }
+
+        /* ── MAIN ── */
+        .main {
+            margin-left: var(--sidebar-w);
+        }
+
+        /* ── MARQUEE ── */
+        .marquee-wrap {
+            background: var(--marquee-bg);
+            border-bottom: 1px solid var(--border);
+            overflow: hidden;
+            padding: 14px 0;
+        }
+
+        .marquee-track {
+            display: flex;
+            width: max-content;
+            animation: marquee 40s linear infinite;
+        }
+
+        .marquee-track:hover { animation-play-state: paused; }
+
+        .marquee-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            white-space: nowrap;
             padding: 0 24px;
         }
 
-        /* ---- Nav ---- */
-        nav {
-            position: fixed;
-            top: 0;
-            width: 100%;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border);
-            z-index: 100;
-            padding: 16px 0;
+        .marquee-item .dot {
+            color: var(--accent);
+            margin-right: 24px;
         }
-        nav .container {
+
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* ── HERO ── */
+        .hero {
+            padding: 80px 60px 60px;
+            max-width: 860px;
+        }
+
+        .hero-text {
+            font-family: var(--font-heading);
+            font-size: 2rem;
+            font-weight: 500;
+            line-height: 1.4;
+            color: var(--text);
+            letter-spacing: -0.5px;
+        }
+
+        .hero-text strong {
+            font-weight: 700;
+        }
+
+        /* ── SECTIONS ── */
+        .section {
+            padding: 0 60px 80px;
+        }
+
+        .section-label {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* ── PROJECT ── */
+        .project {
+            margin-bottom: 72px;
+        }
+
+        .project-visual {
+            width: 100%;
+            aspect-ratio: 5 / 2;
+            border-radius: 6px;
+            margin-bottom: 28px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid var(--border);
+        }
+
+        .project-visual-inner {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .project-visual video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Hide placeholder text when image loads */
+        .project-visual img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .project-visual img + .project-visual-inner { display: none; }
+
+        .pv-1 { background: linear-gradient(135deg, #1a2332, #2d1b1b); }
+        .pv-2 { background: linear-gradient(135deg, #1a2820, #1b1b2d); }
+        .pv-3 { background: linear-gradient(135deg, #2a2418, #1a1a2a); }
+        .pv-4 { background: linear-gradient(135deg, #1a1a2a, #2a1a20); }
+
+        .project-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .project-title {
+            font-family: var(--font-heading);
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        .project-links {
+            display: flex;
+            gap: 16px;
+        }
+
+        .project-links a {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .project-links a:hover { color: var(--accent); }
+
+        .project-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            margin-bottom: 20px;
+            max-width: 640px;
+        }
+
+        .project-metrics {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .metric {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metric-value {
+            font-family: var(--font-heading);
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--metric-text);
+            letter-spacing: -1px;
+            line-height: 1.1;
+        }
+
+        .metric-label {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .project-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .ptag {
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            background: var(--tag-bg);
+            color: var(--tag-text);
+            padding: 4px 10px;
+            border-radius: 3px;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── EXPERIENCE ── */
+        .exp-grid {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 0;
+        }
+
+        .exp-item {
+            display: contents;
+        }
+
+        .exp-period {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            padding: 20px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .exp-content {
+            padding: 20px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .exp-role {
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 2px;
+        }
+
+        .exp-industry {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .exp-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            max-width: 560px;
+        }
+
+        /* ── SKILLS ── */
+        .skills-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 32px;
+        }
+
+        .skill-group-title {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .skill-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        /* ── FOOTER ── */
+        .footer {
+            padding: 40px 60px;
+            border-top: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        nav .logo {
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: var(--accent);
-        }
-        nav .nav-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            margin-left: 28px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-        nav .nav-links a:hover { color: var(--accent); }
 
-        /* ---- Hero ---- */
-        .hero {
-            padding: 160px 0 80px;
-            text-align: center;
-        }
-        .hero h1 {
-            font-size: 3rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-2));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .hero .subtitle {
-            font-size: 1.25rem;
+        .footer-copy {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
             color: var(--text-muted);
-            margin-bottom: 24px;
-        }
-        .hero .tagline {
-            max-width: 680px;
-            margin: 0 auto;
-            color: var(--text-muted);
-            font-size: 1rem;
-            line-height: 1.7;
+            letter-spacing: 0.5px;
         }
 
-        /* ---- Section ---- */
-        section {
-            padding: 80px 0;
-        }
-        .section-title {
-            font-size: 1.6rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            color: var(--text);
-        }
-        .section-subtitle {
-            color: var(--text-muted);
-            margin-bottom: 48px;
-            font-size: 1rem;
-        }
-
-        /* ---- Project Cards ---- */
-        .projects-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 32px;
-        }
-        .project-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 36px;
-            transition: background 0.2s, border-color 0.2s;
-        }
-        .project-card:hover {
-            background: var(--bg-card-hover);
-            border-color: var(--accent);
-        }
-        .project-header {
+        .footer-links {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        .project-header h3 {
-            font-size: 1.3rem;
-            font-weight: 600;
-        }
-        .project-links {
-            display: flex;
-            gap: 12px;
-        }
-        .project-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 0.85rem;
-            padding: 6px 14px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-        .project-links a:hover {
-            color: var(--accent);
-            border-color: var(--accent);
-        }
-        .project-description {
-            color: var(--text-muted);
-            margin-bottom: 20px;
-            line-height: 1.7;
-        }
-        .project-highlights {
-            list-style: none;
-            margin-bottom: 20px;
-        }
-        .project-highlights li {
-            padding: 4px 0;
-            color: var(--text);
-            font-size: 0.95rem;
-        }
-        .project-highlights li::before {
-            content: ">";
-            color: var(--accent);
-            margin-right: 10px;
-            font-weight: 700;
-            font-family: monospace;
-        }
-        .tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .tag {
-            background: var(--tag-bg);
-            color: var(--tag-text);
-            padding: 4px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        /* ---- Experience ---- */
-        .experience-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
             gap: 24px;
         }
-        .exp-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 28px;
-        }
-        .exp-card .period {
-            font-size: 0.8rem;
-            color: var(--accent);
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        .exp-card h4 {
-            font-size: 1.05rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        .exp-card .industry {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-        }
-        .exp-card p {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            line-height: 1.6;
-        }
 
-        /* ---- Skills ---- */
-        .skills-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px;
-        }
-        .skill-group {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 28px;
-        }
-        .skill-group h4 {
-            font-size: 0.95rem;
-            font-weight: 600;
-            margin-bottom: 14px;
-            color: var(--accent);
-        }
-        .skill-group .tags { gap: 6px; }
-
-        /* ---- Footer ---- */
-        footer {
-            border-top: 1px solid var(--border);
-            padding: 40px 0;
-            text-align: center;
-        }
-        footer .links {
-            display: flex;
-            justify-content: center;
-            gap: 32px;
-            margin-bottom: 20px;
-        }
-        footer a {
+        .footer-links a {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             color: var(--text-muted);
             text-decoration: none;
-            font-size: 0.9rem;
             transition: color 0.2s;
         }
-        footer a:hover { color: var(--accent); }
-        footer .copy {
-            color: var(--text-muted);
-            font-size: 0.8rem;
+
+        .footer-links a:hover { color: var(--text); }
+
+        /* ── SCROLL FADE ── */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
         }
 
-        /* ---- Responsive ---- */
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2rem; }
-            .experience-grid { grid-template-columns: 1fr; }
-            nav .nav-links a { margin-left: 16px; font-size: 0.8rem; }
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 900px) {
+            .sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: center;
+                padding: 20px 24px;
+                gap: 12px;
+            }
+            .sidebar-name { margin-bottom: 0; }
+            .sidebar-role { margin-bottom: 0; }
+            .sidebar-status { margin-bottom: 0; }
+            .sidebar nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 0;
+                margin-bottom: 0;
+            }
+            .sidebar nav a { padding: 6px 12px; }
+            .sidebar-links {
+                flex-direction: row;
+                flex-wrap: wrap;
+                border-top: none;
+                margin-top: 0;
+                padding-top: 0;
+                gap: 0;
+            }
+            .sidebar-links a { padding: 6px 12px; }
+            .theme-toggle { margin-top: 0; padding: 6px 16px; }
+            .main { margin-left: 0; }
+            .hero { padding: 40px 24px 40px; }
+            .hero-text { font-size: 1.5rem; }
+            .section { padding: 0 24px 60px; }
+            .exp-grid { grid-template-columns: 1fr; }
+            .exp-period { padding-bottom: 0; border-top: 1px solid var(--border); }
+            .exp-content { padding-top: 4px; border-top: none; }
+            .footer { padding: 32px 24px; flex-direction: column; gap: 16px; }
         }
     </style>
 </head>
 <body>
 
-<nav>
-    <div class="container">
-        <span class="logo">HA</span>
-        <div class="nav-links">
-            <a href="#projects">Projects</a>
-            <a href="#experience">Experience</a>
-            <a href="#skills">Skills</a>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+    <div class="sidebar-name">Henrik<br>Axelsson</div>
+    <div class="sidebar-role">AI & Data Platform Architect</div>
+    <div class="sidebar-status">Available for opportunities</div>
+
+    <nav>
+        <a href="#work">Work</a>
+        <a href="#experience">Experience</a>
+        <a href="#skills">Skills</a>
+    </nav>
+
+    <div class="sidebar-links">
+        <a href="https://github.com/henrikamnas" target="_blank">GitHub &#8599;</a>
+        <a href="https://www.linkedin.com/in/henrik-axelsson-081690aa/" target="_blank">LinkedIn &#8599;</a>
+        <a href="mailto:henrikaxelsson.link@gmail.com">Email &#8599;</a>
+    </div>
+
+    <button class="theme-toggle" onclick="toggleTheme()">Light / Dark</button>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+    <!-- MARQUEE -->
+    <div class="marquee-wrap">
+        <div class="marquee-track">
+            <span class="marquee-item"><span class="dot">&bull;</span>Databricks</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>LightGBM</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>PyTorch</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>dbt</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Microsoft Fabric</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Direct Lake</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>OneLake</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>RAG</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Azure AI Search</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>DINOv2</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>CLIP / SigLIP</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>OpenAI</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Delta Lakehouse</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>PySpark</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>SHAP</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Power BI</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Python</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Databricks</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>LightGBM</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>PyTorch</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>dbt</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Microsoft Fabric</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Direct Lake</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>OneLake</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>RAG</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Azure AI Search</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>DINOv2</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>CLIP / SigLIP</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>OpenAI</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Delta Lakehouse</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>PySpark</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>SHAP</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Power BI</span>
+            <span class="marquee-item"><span class="dot">&bull;</span>Python</span>
         </div>
     </div>
-</nav>
 
-<header class="hero">
-    <div class="container">
-        <h1>Henrik Axelsson</h1>
-        <p class="subtitle">AI & Data Platform Architect</p>
-        <p class="tagline">
-            10+ years building production data systems. Deep expertise in data pipeline architecture,
-            cloud infrastructure, and AI/ML systems - including RAG architectures, vector databases,
-            and LLM-powered applications. Proven ability to take complex, unstructured data and
-            transform it into structured, retrievable knowledge.
+    <!-- HERO -->
+    <div class="hero">
+        <p class="hero-text">
+            10+ years building <strong>production data systems</strong>.
+            Currently focused on ML engineering, Microsoft Fabric platform architecture,
+            and AI-powered search &mdash; predictive maintenance models, embedding pipelines,
+            and RAG architectures. I take complex, unstructured data
+            and make it useful.
         </p>
     </div>
-</header>
 
-<section id="projects">
-    <div class="container">
-        <h2 class="section-title">Featured Projects</h2>
-        <p class="section-subtitle">Recent work demonstrating AI, data engineering, and full-stack capabilities.</p>
+    <!-- WORK -->
+    <div class="section" id="work">
+        <div class="section-label">Selected Work</div>
 
-        <div class="projects-grid">
-
-            <!-- Predictive Maintenance -->
-            <div class="project-card">
-                <div class="project-header">
-                    <h3>Predictive Maintenance - Turbofan RUL</h3>
-                    <div class="project-links">
-                        <a href="https://github.com/henrikamnas/predictive-maintenance" target="_blank">GitHub</a>
-                        <a href="https://haxdock-predictive-maintenance.hf.space" target="_blank">Live Demo</a>
-                    </div>
+        <!-- Predictive Maintenance -->
+        <div class="project fade-in">
+            <div class="project-visual pv-1">
+                <img src="img/predictive.png" alt="Predictive Maintenance demo" onerror="this.remove()">
+                <div class="project-visual-inner">Predictive Maintenance</div>
+            </div>
+            <div class="project-top">
+                <h3 class="project-title">Predictive Maintenance &mdash; Turbofan RUL</h3>
+                <div class="project-links">
+                    <a href="https://github.com/henrikamnas/predictive-maintenance" target="_blank">GitHub &#8599;</a>
+                    <a href="https://haxdock-predictive-maintenance.hf.space" target="_blank">Demo &#8599;</a>
                 </div>
-                <p class="project-description">
-                    Predicts when jet engines will fail based on sensor data, before they actually break.
-                    Trained on NASA's C-MAPSS dataset (100 simulated turbofan engines, 21 sensors each).
-                    The interactive demo lets you step through an engine's life cycle by cycle and
-                    watch the predicted remaining life update in real time.
-                </p>
-                <ul class="project-highlights">
-                    <li>Feature engineering on raw sensor data: rolling averages, trends, rate of change</li>
-                    <li>Two models compared: XGBoost (point estimates) and Survival Forest (probability curves)</li>
-                    <li>SHAP explanations showing which sensors drive each prediction</li>
-                    <li>Live demo with risk gauges that go from green to red as failure approaches</li>
-                </ul>
-                <div class="tags">
-                    <span class="tag">Python</span>
-                    <span class="tag">XGBoost</span>
-                    <span class="tag">Survival Analysis</span>
-                    <span class="tag">SHAP</span>
-                    <span class="tag">Feature Engineering</span>
-                    <span class="tag">Streamlit</span>
-                    <span class="tag">Plotly</span>
-                    <span class="tag">scikit-learn</span>
+            </div>
+            <p class="project-desc">
+                Predicts when jet engines will fail based on sensor data, before they break.
+                Trained on NASA's C-MAPSS dataset. The interactive demo lets you step through
+                an engine's life cycle by cycle and watch the predicted remaining life update
+                in real time.
+            </p>
+            <div class="project-metrics">
+                <div class="metric">
+                    <span class="metric-value">100</span>
+                    <span class="metric-label">engines simulated</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-value">21</span>
+                    <span class="metric-label">sensor channels</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-value">2</span>
+                    <span class="metric-label">model approaches</span>
+                </div>
+            </div>
+            <div class="project-tags">
+                <span class="ptag">Python</span>
+                <span class="ptag">XGBoost</span>
+                <span class="ptag">Survival Analysis</span>
+                <span class="ptag">SHAP</span>
+                <span class="ptag">Feature Engineering</span>
+                <span class="ptag">Streamlit</span>
+            </div>
+        </div>
+
+        <!-- SBA Knowledge Assistant -->
+        <div class="project fade-in">
+            <div class="project-visual pv-2">
+                <video autoplay loop muted playsinline>
+                    <source src="img/sba.mp4" type="video/mp4">
+                </video>
+                <div class="project-visual-inner">Knowledge Graph + RAG</div>
+            </div>
+            <div class="project-top">
+                <h3 class="project-title">SBA Lending Knowledge Assistant</h3>
+                <div class="project-links">
+                    <a href="https://github.com/henrikamnas/sba-lending-knowledge-assistant" target="_blank">GitHub &#8599;</a>
+                    <a href="https://sba-lending-knowledge-assistant-3d3lyhtr4ye2kxaq7qzccv.streamlit.app/" target="_blank">Demo &#8599;</a>
+                </div>
+            </div>
+            <p class="project-desc">
+                Multi-feature lending intelligence app: RAG-powered Q&A with source attribution,
+                interactive knowledge graph explorer, and an entity linker that identifies domain
+                terms in free text. End-to-end: document ingestion, chunking, LLM entity extraction,
+                graph construction, and interactive visualization.
+            </p>
+            <div class="project-metrics">
+                <div class="metric">
+                    <span class="metric-value">287</span>
+                    <span class="metric-label">entities extracted</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-value">289</span>
+                    <span class="metric-label">relationships</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-value">6</span>
+                    <span class="metric-label">entity types</span>
+                </div>
+            </div>
+            <div class="project-tags">
+                <span class="ptag">OpenAI</span>
+                <span class="ptag">ChromaDB</span>
+                <span class="ptag">RAG</span>
+                <span class="ptag">Knowledge Graph</span>
+                <span class="ptag">Entity Linking</span>
+                <span class="ptag">NetworkX</span>
+                <span class="ptag">Streamlit</span>
+            </div>
+        </div>
+
+        <!-- Vibe Data Platform -->
+        <div class="project fade-in">
+            <div class="project-visual pv-3">
+                <img src="img/vibe.png" alt="Vibe Data Platform dashboard" onerror="this.remove()">
+                <div class="project-visual-inner">Agentic Data Platform</div>
+            </div>
+            <div class="project-top">
+                <h3 class="project-title">Vibe Data Platform</h3>
+                <div class="project-links">
+                    <a href="https://github.com/henrikamnas/vibe-data-platform" target="_blank">GitHub &#8599;</a>
+                    <a href="https://henrikamnas.github.io/vibe-data-platform/" target="_blank">Dashboard &#8599;</a>
+                </div>
+            </div>
+            <p class="project-desc">
+                An agentic data platform where AI agents orchestrate dbt + DuckDB pipelines.
+                The platform runs pipelines, detects errors, proposes and applies fixes,
+                and retries automatically. Includes an Observable Framework dashboard for
+                business analytics.
+            </p>
+            <div class="project-metrics">
+                <div class="metric">
+                    <span class="metric-value">0&rarr;1</span>
+                    <span class="metric-label">self-healing pipeline</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-value">4</span>
+                    <span class="metric-label">dashboard views</span>
+                </div>
+            </div>
+            <div class="project-tags">
+                <span class="ptag">dbt</span>
+                <span class="ptag">DuckDB</span>
+                <span class="ptag">AI Agents</span>
+                <span class="ptag">Observable</span>
+                <span class="ptag">Python</span>
+                <span class="ptag">GitHub Actions</span>
+            </div>
+        </div>
+
+        <!-- Haddock -->
+        <div class="project fade-in">
+            <div class="project-visual pv-4">
+                <video autoplay loop muted playsinline>
+                    <source src="img/haddock.mp4" type="video/mp4">
+                </video>
+                <div class="project-visual-inner">Associative Analytics</div>
+            </div>
+            <div class="project-top">
+                <h3 class="project-title">Haddock &mdash; Associative Engine</h3>
+                <div class="project-links">
+                    <a href="https://github.com/henrikamnas/haddock" target="_blank">GitHub &#8599;</a>
+                    <a href="https://henrikamnas.github.io/haddock/" target="_blank">Demo &#8599;</a>
+                </div>
+            </div>
+            <p class="project-desc">
+                In-browser associative analytics engine built on DuckDB-WASM. Cross-table
+                filtering through auto-detected relationships &mdash; click any cell to see
+                related data across all tables. Canvas mode for composite views with automatic
+                JOIN path detection.
+            </p>
+            <div class="project-metrics">
+                <div class="metric">
+                    <span class="metric-value">0ms</span>
+                    <span class="metric-label">server dependency</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-value">3</span>
+                    <span class="metric-label">selection states</span>
+                </div>
+            </div>
+            <div class="project-tags">
+                <span class="ptag">React</span>
+                <span class="ptag">TypeScript</span>
+                <span class="ptag">DuckDB-WASM</span>
+                <span class="ptag">Zustand</span>
+                <span class="ptag">TanStack</span>
+                <span class="ptag">Tailwind</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- EXPERIENCE -->
+    <div class="section" id="experience">
+        <div class="section-label">Experience</div>
+
+        <div class="exp-grid">
+            <div class="exp-item fade-in">
+                <div class="exp-period">2025 &ndash; 2026</div>
+                <div class="exp-content">
+                    <div class="exp-role">AI / Knowledge Data Engineer & Solution Architect</div>
+                    <div class="exp-industry">AI & Knowledge Engineering</div>
+                    <p class="exp-desc">
+                        RAG-based knowledge retrieval systems and AI-powered search.
+                        End-to-end pipelines: document ingestion, chunking, vector storage,
+                        multi-stage retrieval with re-ranking, LLM integration with source attribution.
+                        Image recognition pipelines using DINOv2, CLIP/SigLIP with hybrid search (RRF)
+                        and LoRA fine-tuning strategy.
+                    </p>
                 </div>
             </div>
 
-            <!-- RAG Knowledge Assistant -->
-            <div class="project-card">
-                <div class="project-header">
-                    <h3>SBA Lending Knowledge Assistant</h3>
-                    <div class="project-links">
-                        <a href="https://github.com/henrikamnas/sba-lending-knowledge-assistant" target="_blank">GitHub</a>
-                        <a href="https://sba-lending-knowledge-assistant-3d3lyhtr4ye2kxaq7qzccv.streamlit.app/" target="_blank">Live Demo</a>
-                    </div>
-                </div>
-                <p class="project-description">
-                    A multi-feature SBA lending intelligence app: RAG-powered Q&A with source attribution,
-                    an interactive knowledge graph explorer (287 entities, 289 relationships), and an
-                    entity linker that identifies and classifies domain terms in free text. Built end-to-end:
-                    document ingestion, intelligent chunking, LLM-based entity extraction, graph construction
-                    with NetworkX, and interactive visualization with pyvis.
-                </p>
-                <ul class="project-highlights">
-                    <li>Knowledge graph with 6 entity types extracted via structured LLM prompts</li>
-                    <li>Entity linker: NER + linking to canonical knowledge graph nodes</li>
-                    <li>Hybrid retrieval: cosine similarity + domain-specific keyword boosting</li>
-                    <li>Source attribution with relevance scoring - critical for compliance use cases</li>
-                    <li>Interactive graph visualization with type filtering and node inspection</li>
-                </ul>
-                <div class="tags">
-                    <span class="tag">Python</span>
-                    <span class="tag">OpenAI</span>
-                    <span class="tag">ChromaDB</span>
-                    <span class="tag">RAG</span>
-                    <span class="tag">Knowledge Graph</span>
-                    <span class="tag">Entity Linking</span>
-                    <span class="tag">NetworkX</span>
-                    <span class="tag">Streamlit</span>
+            <div class="exp-item fade-in">
+                <div class="exp-period">2024 &ndash; present</div>
+                <div class="exp-content">
+                    <div class="exp-role">Technical Architect & ML Engineer</div>
+                    <div class="exp-industry">Manufacturing / E-Commerce</div>
+                    <p class="exp-desc">
+                        Greenfield e-commerce analytics platform on Microsoft Fabric (2 years) &mdash;
+                        Lakehouses, Warehouse, ~50 Notebooks, Direct Lake semantic models, Mirrored Databases,
+                        and Power BI Embedded with dynamic RLS for customer-facing analytics.
+                        24+ Azure Functions for event-driven ingestion, full CI/CD with Bicep IaC and Fabric Git Integration.
+                        Parallel track: end-to-end ML platform for predictive maintenance of heavy mining equipment &mdash;
+                        LightGBM failure predictor, PyTorch autoencoder for anomaly detection, SHAP explainability.
+                    </p>
                 </div>
             </div>
 
-            <!-- Vibe Data Platform -->
-            <div class="project-card">
-                <div class="project-header">
-                    <h3>Vibe Data Platform</h3>
-                    <div class="project-links">
-                        <a href="https://github.com/henrikamnas/vibe-data-platform" target="_blank">GitHub</a>
-                        <a href="https://henrikamnas.github.io/vibe-data-platform/" target="_blank">Dashboard</a>
-                    </div>
-                </div>
-                <p class="project-description">
-                    An agentic data platform where AI agents orchestrate dbt + DuckDB pipelines.
-                    The platform can run pipelines, detect errors, propose and apply fixes,
-                    and retry automatically - demonstrating self-healing data infrastructure.
-                    Includes an Observable Framework dashboard for business analytics.
-                </p>
-                <ul class="project-highlights">
-                    <li>Claude-powered pipeline orchestration with autonomous error recovery</li>
-                    <li>dbt + DuckDB transformation layer with staging and mart models</li>
-                    <li>Observable Framework dashboard: customer analytics, sales, weather insights</li>
-                    <li>GitHub Actions CI/CD with agentic self-healing workflow</li>
-                </ul>
-                <div class="tags">
-                    <span class="tag">dbt</span>
-                    <span class="tag">DuckDB</span>
-                    <span class="tag">AI Agents</span>
-                    <span class="tag">Observable</span>
-                    <span class="tag">Python</span>
-                    <span class="tag">GitHub Actions</span>
+            <div class="exp-item fade-in">
+                <div class="exp-period">2022 &ndash; 2024</div>
+                <div class="exp-content">
+                    <div class="exp-role">Technical Architect</div>
+                    <div class="exp-industry">Medical Devices</div>
+                    <p class="exp-desc">
+                        Large-scale migration from on-prem ETL to SOX-compliant cloud analytics.
+                        Integrated 8+ ERP systems with entity resolution across disparate sources.
+                    </p>
                 </div>
             </div>
 
-            <!-- Haddock -->
-            <div class="project-card">
-                <div class="project-header">
-                    <h3>Haddock - Associative Engine</h3>
-                    <div class="project-links">
-                        <a href="https://github.com/henrikamnas/haddock" target="_blank">GitHub</a>
-                        <a href="https://henrikamnas.github.io/haddock/" target="_blank">Live Demo</a>
-                    </div>
+            <div class="exp-item fade-in">
+                <div class="exp-period">2020 &ndash; 2022</div>
+                <div class="exp-content">
+                    <div class="exp-role">Analytics Architect</div>
+                    <div class="exp-industry">SaaS / Public Sector</div>
+                    <p class="exp-desc">
+                        Embedded analytics platforms from scratch. Power BI Embedded with
+                        real-time pipelines (Cosmos DB Change Feed). Public recycling statistics
+                        dashboard for Sweden.
+                    </p>
                 </div>
-                <p class="project-description">
-                    An in-browser associative analytics engine built on DuckDB-WASM. Supports
-                    cross-table filtering through auto-detected relationships - click any cell
-                    to see related data across all tables with visual state indicators.
-                    Includes a canvas mode for creating composite views from multiple tables.
-                </p>
-                <ul class="project-highlights">
-                    <li>Associative selection model: click-to-filter across related tables</li>
-                    <li>Canvas mode with composite tables and automatic JOIN path detection</li>
-                    <li>Fully client-side - DuckDB-WASM runs analytics in the browser</li>
-                    <li>Visual state indicators: selected, possible, excluded</li>
-                </ul>
-                <div class="tags">
-                    <span class="tag">React</span>
-                    <span class="tag">TypeScript</span>
-                    <span class="tag">DuckDB-WASM</span>
-                    <span class="tag">Zustand</span>
-                    <span class="tag">TanStack</span>
-                    <span class="tag">Tailwind CSS</span>
+            </div>
+
+            <div class="exp-item fade-in">
+                <div class="exp-period">2015 &ndash; 2020</div>
+                <div class="exp-content">
+                    <div class="exp-role">BI Developer / Application Developer</div>
+                    <div class="exp-industry">Retail, Construction, Pharma, HR</div>
+                    <p class="exp-desc">
+                        Data warehouse, ETL, and BI across Qlik and Microsoft platforms.
+                        Full-stack web development (.NET Core, React).
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SKILLS -->
+    <div class="section" id="skills">
+        <div class="section-label">Skills</div>
+
+        <div class="skills-row fade-in">
+
+            <div>
+                <div class="skill-group-title">AI & Knowledge Eng.</div>
+                <div class="skill-tags">
+                    <span class="ptag">RAG Architecture</span>
+                    <span class="ptag">Vector Databases</span>
+                    <span class="ptag">OpenAI / LLMs</span>
+                    <span class="ptag">DINOv2 / CLIP / SigLIP</span>
+                    <span class="ptag">Azure AI Search</span>
+                    <span class="ptag">Hybrid Search (RRF)</span>
+                    <span class="ptag">LoRA Fine-tuning</span>
+                </div>
+            </div>
+
+            <div>
+                <div class="skill-group-title">Machine Learning</div>
+                <div class="skill-tags">
+                    <span class="ptag">LightGBM</span>
+                    <span class="ptag">XGBoost</span>
+                    <span class="ptag">scikit-learn</span>
+                    <span class="ptag">PyTorch</span>
+                    <span class="ptag">Anomaly Detection</span>
+                    <span class="ptag">Autoencoder</span>
+                    <span class="ptag">SHAP</span>
+                </div>
+            </div>
+
+            <div>
+                <div class="skill-group-title">Data Engineering</div>
+                <div class="skill-tags">
+                    <span class="ptag">Microsoft Fabric</span>
+                    <span class="ptag">Direct Lake</span>
+                    <span class="ptag">Databricks</span>
+                    <span class="ptag">dbt</span>
+                    <span class="ptag">Delta Lakehouse</span>
+                    <span class="ptag">PySpark</span>
+                    <span class="ptag">Azure Functions</span>
+                    <span class="ptag">Azure Data Factory</span>
+                </div>
+            </div>
+
+            <div>
+                <div class="skill-group-title">Programming</div>
+                <div class="skill-tags">
+                    <span class="ptag">Python</span>
+                    <span class="ptag">SQL</span>
+                    <span class="ptag">TypeScript</span>
+                    <span class="ptag">DAX</span>
+                    <span class="ptag">C# / .NET</span>
+                </div>
+            </div>
+
+            <div>
+                <div class="skill-group-title">Cloud & Infra</div>
+                <div class="skill-tags">
+                    <span class="ptag">Azure</span>
+                    <span class="ptag">Fabric Git Integration</span>
+                    <span class="ptag">Bicep IaC</span>
+                    <span class="ptag">Docker</span>
+                    <span class="ptag">CI/CD</span>
+                    <span class="ptag">Azure DevOps</span>
+                    <span class="ptag">GitHub Actions</span>
+                </div>
+            </div>
+
+            <div>
+                <div class="skill-group-title">BI & Modeling</div>
+                <div class="skill-tags">
+                    <span class="ptag">Dimensional Modeling</span>
+                    <span class="ptag">Power BI</span>
+                    <span class="ptag">PBI Embedded</span>
+                    <span class="ptag">Semantic Models (TMDL)</span>
+                    <span class="ptag">Row-Level Security</span>
                 </div>
             </div>
 
         </div>
     </div>
-</section>
 
-<section id="experience">
-    <div class="container">
-        <h2 class="section-title">Selected Experience</h2>
-        <p class="section-subtitle">Highlights from 10+ years of data platform work across diverse industries.</p>
-
-        <div class="experience-grid">
-
-            <div class="exp-card">
-                <div class="period">2025 - 2026</div>
-                <h4>AI/Knowledge Data Engineer & Solution Architect</h4>
-                <div class="industry">AI & Knowledge Engineering</div>
-                <p>
-                    Design and implementation of RAG-based knowledge retrieval systems
-                    and AI-powered search solutions. Built end-to-end pipelines covering
-                    document ingestion, intelligent chunking, vector storage
-                    (Databricks Vector Search, Azure AI Search), multi-stage retrieval
-                    with re-ranking, and LLM integration with source attribution.
-                    Architected image recognition and visual search pipelines using Azure AI Vision,
-                    DINOv2, and CLIP/SigLIP with hybrid search (RRF) and LoRA fine-tuning strategy.
-                </p>
+    <!-- EDUCATION -->
+    <div class="section">
+        <div class="section-label">Education</div>
+        <div class="exp-grid fade-in">
+            <div class="exp-item">
+                <div class="exp-period">2010 &ndash; 2015</div>
+                <div class="exp-content">
+                    <div class="exp-role">M.S. Engineering &mdash; Industrial Management</div>
+                    <div class="exp-industry">Linkoping University</div>
+                </div>
             </div>
-
-            <div class="exp-card">
-                <div class="period">2024 - Present</div>
-                <h4>Technical Architect & ML Engineer</h4>
-                <div class="industry">Manufacturing / E-Commerce</div>
-                <p>
-                    Platform architect for a greenfield e-commerce analytics platform using
-                    Microsoft Fabric, Delta Lakehouse, and dbt. Also built an end-to-end ML
-                    platform for predictive maintenance of heavy mining equipment — LightGBM
-                    failure predictor, PyTorch tabular autoencoder for anomaly detection,
-                    SHAP explainability, and a Streamlit fleet risk dashboard — all on Databricks.
-                </p>
-            </div>
-
-            <div class="exp-card">
-                <div class="period">2022 - 2024</div>
-                <h4>Technical Architect</h4>
-                <div class="industry">Medical Devices</div>
-                <p>
-                    Led architecture for a large-scale migration from on-premises ETL to a
-                    SOX-compliant cloud analytics platform. Integrated 8+ ERP systems with
-                    entity resolution across disparate data sources.
-                </p>
-            </div>
-
-            <div class="exp-card">
-                <div class="period">2020 - 2022</div>
-                <h4>Analytics Architect</h4>
-                <div class="industry">SaaS / Public Sector</div>
-                <p>
-                    Built embedded analytics platforms from scratch - including Power BI Embedded
-                    with real-time pipelines (Azure Functions, Cosmos DB Change Feed) and a
-                    public-facing recycling statistics dashboard.
-                </p>
-            </div>
-
-            <div class="exp-card">
-                <div class="period">2015 - 2020</div>
-                <h4>BI Developer / Application Developer</h4>
-                <div class="industry">Retail, Construction, Pharma, HR</div>
-                <p>
-                    Various data warehouse, ETL, and BI roles across Qlik and Microsoft platforms.
-                    Full-stack web application development (.NET Core, React).
-                </p>
-            </div>
-
         </div>
     </div>
-</section>
 
-<section id="skills">
-    <div class="container">
-        <h2 class="section-title">Technical Skills</h2>
-        <p class="section-subtitle">Core technologies and domains.</p>
-
-        <div class="skills-grid">
-
-            <div class="skill-group">
-                <h4>AI & Knowledge Engineering</h4>
-                <div class="tags">
-                    <span class="tag">RAG Architecture</span>
-                    <span class="tag">Vector Databases</span>
-                    <span class="tag">OpenAI / LLMs</span>
-                    <span class="tag">Embedding Models</span>
-                    <span class="tag">DINOv2 / CLIP / SigLIP</span>
-                    <span class="tag">Azure AI Vision</span>
-                    <span class="tag">Azure AI Search</span>
-                    <span class="tag">Hybrid Search (RRF)</span>
-                    <span class="tag">LoRA Fine-tuning</span>
-                </div>
-            </div>
-
-            <div class="skill-group">
-                <h4>Machine Learning</h4>
-                <div class="tags">
-                    <span class="tag">LightGBM</span>
-                    <span class="tag">XGBoost</span>
-                    <span class="tag">scikit-learn</span>
-                    <span class="tag">PyTorch</span>
-                    <span class="tag">Feature Engineering</span>
-                    <span class="tag">Anomaly Detection</span>
-                    <span class="tag">Isolation Forest</span>
-                    <span class="tag">Autoencoder</span>
-                    <span class="tag">SHAP Explainability</span>
-                    <span class="tag">Predictive Maintenance</span>
-                </div>
-            </div>
-
-            <div class="skill-group">
-                <h4>Data Engineering</h4>
-                <div class="tags">
-                    <span class="tag">Databricks</span>
-                    <span class="tag">dbt</span>
-                    <span class="tag">Delta Lakehouse</span>
-                    <span class="tag">PySpark</span>
-                    <span class="tag">Azure Data Factory</span>
-                    <span class="tag">ETL / ELT</span>
-                </div>
-            </div>
-
-            <div class="skill-group">
-                <h4>Programming</h4>
-                <div class="tags">
-                    <span class="tag">Python</span>
-                    <span class="tag">PySpark</span>
-                    <span class="tag">SQL</span>
-                    <span class="tag">DAX</span>
-                    <span class="tag">TypeScript</span>
-                    <span class="tag">C# / .NET</span>
-                </div>
-            </div>
-
-            <div class="skill-group">
-                <h4>Cloud & Infrastructure</h4>
-                <div class="tags">
-                    <span class="tag">Azure</span>
-                    <span class="tag">Microsoft Fabric</span>
-                    <span class="tag">Docker</span>
-                    <span class="tag">CI/CD</span>
-                    <span class="tag">Azure DevOps</span>
-                    <span class="tag">GitHub Actions</span>
-                </div>
-            </div>
-
-            <div class="skill-group">
-                <h4>Data Modeling & BI</h4>
-                <div class="tags">
-                    <span class="tag">Dimensional Modeling</span>
-                    <span class="tag">Power BI</span>
-                    <span class="tag">Power BI Embedded</span>
-                    <span class="tag">Semantic Models</span>
-                </div>
-            </div>
-
-            <div class="skill-group">
-                <h4>Education</h4>
-                <div class="tags">
-                    <span class="tag">M.S. Engineering - Industrial Management</span>
-                    <span class="tag">Linkoping University, 2010-2015</span>
-                </div>
-            </div>
-
-        </div>
-    </div>
-</section>
-
-<footer>
-    <div class="container">
-        <div class="links">
+    <!-- FOOTER -->
+    <footer class="footer">
+        <span class="footer-copy">Henrik Axelsson &mdash; 2026</span>
+        <div class="footer-links">
             <a href="https://github.com/henrikamnas" target="_blank">GitHub</a>
+            <a href="https://www.linkedin.com/in/henrik-axelsson-081690aa/" target="_blank">LinkedIn</a>
             <a href="mailto:henrikaxelsson.link@gmail.com">Email</a>
         </div>
-        <p class="copy">Henrik Axelsson - 2026</p>
-    </div>
-</footer>
+    </footer>
+
+</div>
+
+<script>
+// Theme toggle
+function toggleTheme() {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+}
+
+// Restore saved theme
+(function() {
+    const saved = localStorage.getItem('theme');
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
+
+// Scroll fade-in
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+        }
+    });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
 
 </body>
 </html>
