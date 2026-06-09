@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warriors — Ditt äventyr</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Grenze:wght@500;700&family=Alegreya:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night:#0e1712; --moss:#18241c; --moss-2:#1f2f25;
+    --parchment:#ece3cc; --parchment-dim:#c9bfa6;
+    --amber:#e0a43c; --moon:#93b3bf; --bark:#5a4632;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{
+    background:var(--night);
+    background-image:radial-gradient(ellipse 80% 50% at 50% -10%, #1b2a20 0%, transparent 60%);
+    color:var(--parchment);
+    font-family:'Alegreya', Georgia, serif;
+    font-size:19px; line-height:1.55;
+    min-height:100vh;
+  }
+  .wrap{max-width:760px; margin:0 auto; padding:24px 18px 80px}
+  h1,h2{font-family:'Grenze', serif; font-weight:700; color:var(--amber); letter-spacing:.5px}
+  h1{font-size:2.6rem; text-align:center; margin:18px 0 4px; text-shadow:0 2px 14px rgba(224,164,60,.25)}
+  .subtitle{text-align:center; color:var(--moon); font-style:italic; margin-bottom:34px}
+  h2{font-size:1.5rem; margin:26px 0 10px}
+  label{display:block; color:var(--parchment-dim); font-size:.95rem; margin:16px 0 6px}
+  input[type=text], textarea, select{
+    width:100%; background:var(--moss); color:var(--parchment);
+    border:1px solid var(--bark); border-radius:8px;
+    padding:11px 13px; font-family:inherit; font-size:1rem;
+  }
+  textarea{min-height:90px; resize:vertical}
+  input:focus, textarea:focus, select:focus, button:focus-visible{
+    outline:2px solid var(--amber); outline-offset:2px;
+  }
+  button{
+    font-family:'Grenze', serif; font-weight:500; font-size:1.15rem;
+    background:var(--moss-2); color:var(--parchment);
+    border:1px solid var(--bark); border-radius:10px;
+    padding:12px 22px; cursor:pointer;
+    transition:transform .12s ease, border-color .12s ease, background .12s ease;
+  }
+  button:hover{border-color:var(--amber); background:#26392c; transform:translateY(-1px)}
+  button.primary{background:var(--amber); color:#241a08; border-color:var(--amber); font-weight:700}
+  button.primary:hover{background:#f0b550}
+  button:disabled{opacity:.45; cursor:not-allowed; transform:none}
+  .row{display:flex; gap:12px; flex-wrap:wrap}
+  .row > *{flex:1; min-width:140px}
+  .hidden{display:none !important}
+
+  /* —— vägval: text eller teckning —— */
+  .tabs{display:flex; gap:8px; margin-top:18px}
+  .tabs button{flex:1; opacity:.6}
+  .tabs button.active{opacity:1; border-color:var(--amber); color:var(--amber)}
+  .dropzone{
+    border:2px dashed var(--bark); border-radius:12px; padding:26px;
+    text-align:center; color:var(--parchment-dim); cursor:pointer; margin-top:6px;
+  }
+  .dropzone:hover{border-color:var(--amber)}
+  .dropzone img{max-width:100%; max-height:260px; border-radius:8px}
+
+  /* —— scenplattan: spelets hjärta —— */
+  .plate{
+    position:relative; border-radius:14px; overflow:hidden;
+    border:1px solid var(--bark);
+    box-shadow:0 0 0 6px var(--moss), 0 0 0 7px var(--bark), 0 18px 50px rgba(0,0,0,.55);
+    margin:22px 0; aspect-ratio:16/10; background:var(--moss);
+  }
+  .plate img{
+    width:100%; height:100%; object-fit:cover; display:block;
+    animation:kenburns 28s ease-in-out infinite alternate;
+  }
+  @keyframes kenburns{
+    from{transform:scale(1) translate(0,0)}
+    to{transform:scale(1.08) translate(-1.5%, 1.5%)}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .plate img{animation:none}
+  }
+  .character-plate{aspect-ratio:1/1; max-width:480px; margin:22px auto}
+
+  /* —— tassavtryck-laddning —— */
+  .loading{display:flex; flex-direction:column; align-items:center; gap:14px; padding:46px 0}
+  .loading .whisper{color:var(--moon); font-style:italic}
+  .paws{display:flex; gap:18px; font-size:1.6rem}
+  .paws span{opacity:0; animation:paw 1.8s infinite}
+  .paws span:nth-child(2){animation-delay:.3s}
+  .paws span:nth-child(3){animation-delay:.6s}
+  .paws span:nth-child(4){animation-delay:.9s}
+  @keyframes paw{0%{opacity:0; transform:translateY(4px)} 30%{opacity:.9; transform:none} 70%{opacity:.9} 100%{opacity:0}}
+
+  /* —— berättelse + val —— */
+  .scene-text{font-size:1.18rem; margin:6px 2px 24px; white-space:pre-wrap}
+  .choices{display:flex; flex-direction:column; gap:10px}
+  .choices button{text-align:left; padding:14px 18px}
+  .choices button::before{content:"🐾  "; opacity:.7}
+  .freetext{display:flex; gap:10px; margin-top:14px}
+  .freetext input{flex:1}
+  .topbar{
+    display:flex; justify-content:space-between; align-items:center;
+    border-bottom:1px solid var(--bark); padding-bottom:10px; margin-bottom:6px;
+    font-family:'Grenze', serif; font-size:1.2rem;
+  }
+  .topbar .clan{color:var(--moon)}
+  .toolrow{display:flex; gap:10px; margin-top:26px; flex-wrap:wrap}
+  .toolrow button{font-size:.95rem; padding:8px 14px; opacity:.85}
+  .error{
+    background:#3a1f1a; border:1px solid #7a4034; color:#f0c9b8;
+    border-radius:10px; padding:12px 16px; margin:14px 0;
+  }
+  .hint{color:var(--parchment-dim); font-size:.9rem; font-style:italic; margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ════════ SKÄRM 1: SKAPA DIN KATT ════════ -->
+  <section id="screen-create">
+    <h1>Warriors</h1>
+    <p class="subtitle">Ett äventyr bland klanerna — berättat av Stjärnklanen, målat av månens ljus</p>
+
+    <h2>Skapa din krigare</h2>
+    <div class="row">
+      <div>
+        <label for="cat-name">Din katts namn</label>
+        <input type="text" id="cat-name" placeholder="t.ex. Silvertass" maxlength="40">
+      </div>
+      <div>
+        <label for="clan">Klan</label>
+        <select id="clan">
+          <option>Åskklanen</option>
+          <option>Flodklanen</option>
+          <option>Vindklanen</option>
+          <option>Skuggklanen</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button id="tab-text" class="active" onclick="setMode('text')">✏️ Beskriv med ord</button>
+      <button id="tab-draw" onclick="setMode('draw')">🎨 Ladda upp din teckning</button>
+    </div>
+
+    <div id="mode-text">
+      <label for="cat-desc">Hur ser din katt ut?</label>
+      <textarea id="cat-desc" placeholder="t.ex. en smal silvergrå tigrerad katthona med vita tassar, gröna ögon och ett litet ärr över nosen"></textarea>
+    </div>
+
+    <div id="mode-draw" class="hidden">
+      <label>Ta ett foto av din teckning och ladda upp det</label>
+      <div class="dropzone" id="drop-create" onclick="document.getElementById('file-create').click()">
+        <span id="drop-create-label">Klicka här för att välja en bild 📷</span>
+      </div>
+      <input type="file" id="file-create" accept="image/*" class="hidden">
+      <p class="hint">Tips: fota i bra ljus, rakt uppifrån.</p>
+    </div>
+
+    <label for="style">Bildstil</label>
+    <select id="style">
+      <option value="bokomslag">Bokomslag (som Warriors-böckerna)</option>
+      <option value="akvarell">Akvarell</option>
+      <option value="realistisk">Realistisk</option>
+      <option value="egen">Behåll min egen stil</option>
+    </select>
+
+    <div class="toolrow" style="justify-content:center; margin-top:34px">
+      <button class="primary" id="btn-create" onclick="createCharacter()">Väck din katt till liv ✨</button>
+    </div>
+    <div id="create-error"></div>
+  </section>
+
+  <!-- ════════ SKÄRM 2: GODKÄNN KARAKTÄREN ════════ -->
+  <section id="screen-approve" class="hidden">
+    <h1 id="approve-title">Silvertass</h1>
+    <p class="subtitle">Är det här din katt?</p>
+    <div id="approve-loading" class="loading hidden">
+      <div class="paws"><span>🐾</span><span>🐾</span><span>🐾</span><span>🐾</span></div>
+      <div class="whisper">Månskenet målar din katt …</div>
+    </div>
+    <div class="plate character-plate" id="approve-plate"><img id="char-img" alt="Din katt"></div>
+    <label for="adjustment">Vill du ändra något?</label>
+    <div class="freetext">
+      <input type="text" id="adjustment" placeholder="t.ex. mörkare ränder, större ögon …">
+      <button onclick="regenerateCharacter()">Gör om 🔄</button>
+    </div>
+    <div class="toolrow" style="justify-content:center; margin-top:28px">
+      <button class="primary" onclick="startGame()">Det är hon/han — börja äventyret! 🌙</button>
+    </div>
+    <div id="approve-error"></div>
+  </section>
+
+  <!-- ════════ SKÄRM 3: SPELET ════════ -->
+  <section id="screen-game" class="hidden">
+    <div class="topbar">
+      <span id="hud-name"></span>
+      <span class="clan" id="hud-clan"></span>
+    </div>
+
+    <div id="game-loading" class="loading hidden">
+      <div class="paws"><span>🐾</span><span>🐾</span><span>🐾</span><span>🐾</span></div>
+      <div class="whisper" id="loading-whisper">Stjärnklanen viskar …</div>
+    </div>
+
+    <div id="game-content">
+      <div class="plate"><img id="scene-img" alt="Scenen"></div>
+      <p class="scene-text" id="scene-text"></p>
+      <div class="choices" id="choices"></div>
+      <div class="freetext">
+        <input type="text" id="free-choice" placeholder="… eller skriv vad du vill göra" onkeydown="if(event.key==='Enter')chooseFree()">
+        <button onclick="chooseFree()">Gör det!</button>
+      </div>
+      <div class="toolrow">
+        <button onclick="document.getElementById('file-game').click()" id="btn-drawing">🎨 Lägg till en teckning i nästa scen</button>
+        <input type="file" id="file-game" accept="image/*" class="hidden">
+      </div>
+    </div>
+    <div id="game-error"></div>
+  </section>
+
+</div>
+
+<script>
+// ─────────────────────────── tillstånd ───────────────────────────
+const state = {
+  name: "", clan: "", style: "bokomslag",
+  mode: "text",                       // "text" | "draw"
+  drawing: null,                      // {base64, mime} — startteckningen
+  reference: null,                    // {base64, mime} — godkänd referensbild
+  pendingDrawing: null,               // teckning som ska in i nästa scen
+  history: [],                        // Claude-meddelanden
+};
+
+const $ = (id) => document.getElementById(id);
+const show = (id) => $(id).classList.remove("hidden");
+const hide = (id) => $(id).classList.add("hidden");
+
+const WHISPERS = [
+  "Stjärnklanen viskar …",
+  "Vinden bär en doft av äventyr …",
+  "Tysta tassar genom ormbunkarna …",
+  "Månstenen glimmar svagt …",
+  "Ett tecken visar sig i molnen …",
+];
+
+function setMode(m){
+  state.mode = m;
+  $("tab-text").classList.toggle("active", m === "text");
+  $("tab-draw").classList.toggle("active", m === "draw");
+  $("mode-text").classList.toggle("hidden", m !== "text");
+  $("mode-draw").classList.toggle("hidden", m !== "draw");
+}
+
+function readFile(file){
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res({ base64: r.result.split(",")[1], mime: file.type || "image/jpeg" });
+    r.onerror = () => rej(new Error("Kunde inte läsa filen"));
+    r.readAsDataURL(file);
+  });
+}
+
+$("file-create").addEventListener("change", async (e) => {
+  if (!e.target.files[0]) return;
+  state.drawing = await readFile(e.target.files[0]);
+  $("drop-create").innerHTML = `<img src="data:${state.drawing.mime};base64,${state.drawing.base64}" alt="Din teckning">`;
+});
+
+$("file-game").addEventListener("change", async (e) => {
+  if (!e.target.files[0]) return;
+  state.pendingDrawing = await readFile(e.target.files[0]);
+  $("btn-drawing").textContent = "🎨 Teckning tillagd! Den dyker upp i nästa scen";
+});
+
+function setError(id, msg){ $(id).innerHTML = msg ? `<div class="error">${msg}</div>` : ""; }
+
+async function post(url, body){
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || "Något gick fel");
+  return data;
+}
+
+// ─────────────────────────── karaktären ───────────────────────────
+async function createCharacter(){
+  state.name = $("cat-name").value.trim() || "Namnlös";
+  state.clan = $("clan").value;
+  state.style = $("style").value;
+  const desc = $("cat-desc").value.trim();
+  if (state.mode === "text" && !desc) return setError("create-error", "Beskriv din katt först!");
+  if (state.mode === "draw" && !state.drawing) return setError("create-error", "Ladda upp en teckning först!");
+  setError("create-error", "");
+
+  hide("screen-create"); show("screen-approve");
+  $("approve-title").textContent = state.name;
+  await generateCharacter();
+}
+
+async function generateCharacter(adjustment){
+  hide("approve-plate"); show("approve-loading"); setError("approve-error", "");
+  try {
+    const body = { style: state.style, adjustment };
+    if (state.mode === "draw") {
+      body.drawingBase64 = state.drawing.base64;
+      body.drawingMime = state.drawing.mime;
+    } else {
+      body.description = $("cat-desc").value.trim();
+    }
+    const img = await post("/api/character", body);
+    state.reference = { base64: img.data, mime: img.mimeType };
+    $("char-img").src = `data:${img.mimeType};base64,${img.data}`;
+    show("approve-plate");
+  } catch (e) {
+    setError("approve-error", e.message);
+  } finally {
+    hide("approve-loading");
+  }
+}
+
+function regenerateCharacter(){
+  const adj = $("adjustment").value.trim();
+  $("adjustment").value = "";
+  generateCharacter(adj || "try a different interpretation");
+}
+
+// ─────────────────────────── spelet ───────────────────────────
+async function startGame(){
+  hide("screen-approve"); show("screen-game");
+  $("hud-name").textContent = "🐾 " + state.name;
+  $("hud-clan").textContent = state.clan;
+  const desc = state.mode === "text" ? $("cat-desc").value.trim() : "se referensbilden";
+  state.history = [{
+    role: "user",
+    content: `Spelarens katt heter ${state.name}, tillhör ${state.clan} och ser ut så här: ${desc}. Börja äventyret! ${state.name} är en ung krigare som just fått sitt krigarnamn.`,
+  }];
+  await advance();
+}
+
+async function advance(){
+  hide("game-content"); show("game-loading"); setError("game-error", "");
+  $("loading-whisper").textContent = WHISPERS[Math.floor(Math.random() * WHISPERS.length)];
+  try {
+    // 1) berättelsen
+    const turn = await post("/api/narrate", { history: state.history });
+    state.history.push({ role: "assistant", content: JSON.stringify(turn) });
+
+    // 2) scenbilden
+    const imgBody = {
+      referenceBase64: state.reference.base64,
+      referenceMime: state.reference.mime,
+      scenePrompt: turn.imagePrompt,
+      style: state.style,
+    };
+    if (state.pendingDrawing) {
+      imgBody.extraBase64 = state.pendingDrawing.base64;
+      imgBody.extraMime = state.pendingDrawing.mime;
+      state.pendingDrawing = null;
+      $("btn-drawing").textContent = "🎨 Lägg till en teckning i nästa scen";
+    }
+    let imgOk = true;
+    try {
+      const img = await post("/api/scene-image", imgBody);
+      $("scene-img").src = `data:${img.mimeType};base64,${img.data}`;
+    } catch { imgOk = false; }
+
+    // 3) visa
+    $("scene-text").textContent = turn.scene;
+    const box = $("choices");
+    box.innerHTML = "";
+    (turn.choices || []).forEach((c) => {
+      const b = document.createElement("button");
+      b.textContent = c;
+      b.onclick = () => choose(c);
+      box.appendChild(b);
+    });
+    if (!imgOk) setError("game-error", "Bilden kunde inte målas den här gången — men berättelsen fortsätter!");
+    show("game-content");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (e) {
+    setError("game-error", e.message + " <button onclick='advance()'>Försök igen</button>");
+    show("game-content");
+  } finally {
+    hide("game-loading");
+  }
+}
+
+function choose(text){
+  let msg = `Jag väljer: ${text}`;
+  if (state.pendingDrawing) msg += ` (playerDrawingNote: spelaren har laddat upp en egen teckning av något som ska dyka upp i nästa scen — väv in det.)`;
+  state.history.push({ role: "user", content: msg });
+  advance();
+}
+
+function chooseFree(){
+  const t = $("free-choice").value.trim();
+  if (!t) return;
+  $("free-choice").value = "";
+  choose(t);
+}
+</script>
+</body>
+</html>
