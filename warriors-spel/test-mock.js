@@ -1,6 +1,5 @@
 // Mock-test: ersätter global fetch för externa API:er, testar serverns alla endpoints
 process.env.PORT = 3457;
-process.env.ANTHROPIC_API_KEY = "mock";
 process.env.GEMINI_API_KEY = "mock";
 
 const realFetch = global.fetch;
@@ -10,17 +9,18 @@ const FAKE_PNG = Buffer.from(
 ).toString("base64");
 
 global.fetch = async (url, opts) => {
-  if (String(url).includes("api.anthropic.com")) {
+  // textmodellen (berättaren) och bildmodellen skiljs åt på modellnamnet i URL:en
+  if (String(url).includes("generativelanguage.googleapis.com") && String(url).includes("gemini-2.5-flash:")) {
     const body = JSON.parse(opts.body);
-    console.log("  → Claude mock anropad, history-längd:", body.messages.length, "| system:", !!body.system);
+    console.log("  → Gemini text-mock anropad, history-längd:", body.contents.length, "| systemInstruction:", !!body.systemInstruction, "| roller:", body.contents.map(c => c.role).join(","));
     return new Response(JSON.stringify({
-      content: [{ type: "text", text: '```json\n{"scene":"Gryningen färgar Åskklanens läger rosa.","choices":["Gå på jakt","Träffa mentorn","Smyg till gränsen"],"imagePrompt":"a forest camp at dawn"}\n```' }],
+      candidates: [{ content: { parts: [{ text: '```json\n{"scene":"Gryningen färgar Åskklanens läger rosa.","choices":["Gå på jakt","Träffa mentorn","Smyg till gränsen"],"imagePrompt":"a forest camp at dawn"}\n```' }] } }],
     }), { status: 200 });
   }
   if (String(url).includes("generativelanguage.googleapis.com")) {
     const body = JSON.parse(opts.body);
     const parts = body.contents[0].parts;
-    console.log("  → Gemini mock anropad, parts:", parts.map(p => p.inlineData ? "bild" : "text").join("+"));
+    console.log("  → Gemini bild-mock anropad, parts:", parts.map(p => p.inlineData ? "bild" : "text").join("+"));
     return new Response(JSON.stringify({
       candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: FAKE_PNG } }] } }],
     }), { status: 200 });
@@ -49,8 +49,13 @@ setTimeout(async () => {
   r = await post("/api/character", { drawingBase64: FAKE_PNG, drawingMime: "image/jpeg", style: "egen", adjustment: "mörkare ränder" });
   check("karaktär (teckning+justering) returnerar bild", r.status === 200 && r.data.mimeType === "image/png");
 
-  // 3. berättelse (med markdown-staket i mocksvaret → testar JSON-rensning)
-  r = await post("/api/narrate", { history: [{ role: "user", content: "Börja äventyret" }] });
+  // 3. berättelse (med markdown-staket i mocksvaret → testar JSON-rensning,
+  //    flerstegshistorik → testar rollmappning assistant→model)
+  r = await post("/api/narrate", { history: [
+    { role: "user", content: "Börja äventyret" },
+    { role: "assistant", content: '{"scene":"..."}' },
+    { role: "user", content: "Jag väljer: Gå på jakt" },
+  ] });
   check("narrate parsar JSON ur ```-staket", r.status === 200 && r.data.choices?.length === 3 && !!r.data.imagePrompt);
 
   // 4. scenbild med referens

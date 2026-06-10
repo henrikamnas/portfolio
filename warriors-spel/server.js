@@ -1,5 +1,5 @@
 // Warriors-spelet — lokal server
-// Claude API: svensk berättarröst. Gemini API: bildgenerering (Nano Banana).
+// Gemini API: svensk berättarröst (text) + bildgenerering (Nano Banana).
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
@@ -8,12 +8,11 @@ const app = express();
 app.use(express.json({ limit: "25mb" })); // teckningar skickas som base64
 app.use(express.static(path.join(__dirname, "public")));
 
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
+const TEXT_MODEL = process.env.TEXT_MODEL || "gemini-2.5-flash";
 const IMAGE_MODEL = process.env.IMAGE_MODEL || "gemini-3.1-flash-image";
 
-// ---------- Claude: berättaren ----------
+// ---------- Gemini: berättaren ----------
 
 const NARRATOR_SYSTEM = `Du är berättaren i ett interaktivt äventyrsspel baserat på bokserien Warriors (Erin Hunter), på svenska, för en läsare som är 10–12 år.
 
@@ -37,29 +36,34 @@ Svara ALLTID med enbart ett JSON-objekt, ingen annan text, inga markdown-staket:
 app.post("/api/narrate", async (req, res) => {
   try {
     const { history } = req.body; // [{role:"user"|"assistant", content:"..."}]
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${TEXT_MODEL}:generateContent`;
+    const r = await fetch(url, {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": ANTHROPIC_KEY,
-        "anthropic-version": "2023-06-01",
-      },
+      headers: { "content-type": "application/json", "x-goog-api-key": GEMINI_KEY },
       body: JSON.stringify({
-        model: CLAUDE_MODEL,
-        max_tokens: 1200,
-        system: NARRATOR_SYSTEM,
-        messages: history,
+        systemInstruction: { parts: [{ text: NARRATOR_SYSTEM }] },
+        contents: history.map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        })),
+        generationConfig: {
+          maxOutputTokens: 3000,
+          responseMimeType: "application/json",
+          // 2.5-flash "tänker" som standard; tankarna räknas mot maxOutputTokens
+          // och behövs inte för berättandet — av ger snabbare och stabilare svar
+          thinkingConfig: { thinkingBudget: 0 },
+        },
       }),
     });
     if (!r.ok) {
       const err = await r.text();
-      console.error("Claude error:", err);
-      return res.status(502).json({ error: "Berättaren svarar inte. Kontrollera ANTHROPIC_API_KEY." });
+      console.error("Gemini text error:", err);
+      return res.status(502).json({ error: "Berättaren svarar inte. Kontrollera GEMINI_API_KEY." });
     }
     const data = await r.json();
-    const text = (data.content || [])
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
+    const text = (data.candidates?.[0]?.content?.parts || [])
+      .filter((p) => typeof p.text === "string")
+      .map((p) => p.text)
       .join("\n");
     const clean = text.replace(/```json|```/g, "").trim();
     let parsed;
@@ -93,13 +97,24 @@ async function geminiImage(parts) {
   if (!r.ok) {
     const err = await r.text();
     console.error("Gemini error:", err);
-    throw new Error("gemini_failed");
+    const e = new Error("gemini_failed");
+    e.status = r.status;
+    e.quotaZero = r.status === 429 && err.includes("limit: 0");
+    throw e;
   }
   const data = await r.json();
   const allParts = data.candidates?.[0]?.content?.parts || [];
   const img = allParts.find((p) => p.inlineData);
   if (!img) throw new Error("no_image_in_response");
   return { mimeType: img.inlineData.mimeType, data: img.inlineData.data };
+}
+
+// Begripliga felmeddelanden — skiljer på "ingen bildkvot alls" (kräver
+// betalnivå hos Google), "kvoten tillfälligt slut" och övriga fel
+function imageErrorText(e, prefix) {
+  if (e.quotaZero) return `${prefix} Bildmodellen ingår inte i gratisnivån för din API-nyckel — aktivera betalnivå på https://aistudio.google.com (≈0,4 kr/bild).`;
+  if (e.status === 429) return `${prefix} Bildkvoten är tillfälligt slut — vänta en stund och försök igen.`;
+  return `${prefix} Kontrollera GEMINI_API_KEY och försök igen.`;
 }
 
 const STYLES = {
@@ -128,7 +143,7 @@ app.post("/api/character", async (req, res) => {
     res.json(img);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "Kunde inte skapa katten. Kontrollera GEMINI_API_KEY och försök igen." });
+    res.status(500).json({ error: imageErrorText(e, "Kunde inte skapa katten.") });
   }
 });
 
@@ -150,13 +165,12 @@ app.post("/api/scene-image", async (req, res) => {
     res.json(img);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "Kunde inte måla scenen." });
+    res.status(500).json({ error: imageErrorText(e, "Kunde inte måla scenen.") });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n  🐾 Warriors-spelet körs på  http://localhost:${PORT}\n`);
-  if (!ANTHROPIC_KEY) console.warn("  ⚠ ANTHROPIC_API_KEY saknas i .env");
   if (!GEMINI_KEY) console.warn("  ⚠ GEMINI_API_KEY saknas i .env");
 });
