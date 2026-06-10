@@ -541,23 +541,40 @@ function choose(text){
 // tre val (gyllene tassavtryck) kan triggas genom att gå fram till dem.
 const MAP = {
   landmarks: [
-    { x: .50, y: .64, emoji: "🏕️", name: "Lägret",            action: "Jag går tillbaka till lägret" },
-    { x: .86, y: .26, emoji: "🌊", name: "Floden",            action: "Jag går ner till floden" },
-    { x: .15, y: .20, emoji: "🌳", name: "Fyrträden",         action: "Jag vandrar till Fyrträden" },
-    { x: .07, y: .72, emoji: "⛰️", name: "Månstenen",         action: "Jag vandrar den långa vägen mot Mormun och Månstenen" },
-    { x: .72, y: .80, emoji: "🌿", name: "Jaktmarkerna",      action: "Jag smyger ut till jaktmarkerna för att jaga" },
-    { x: .30, y: .90, emoji: "🌲", name: "Skuggklanens gräns", action: "Jag går till gränsen mot Skuggklanen" },
-    { x: .60, y: .46, emoji: "🍃", name: "Läkarkattens lya",  action: "Jag tittar in hos läkarkatten" },
-    { x: .38, y: .34, emoji: "🌾", name: "Träningssvackan",   action: "Jag går till träningssvackan för att öva kampgrepp" },
+    { x: .50, y: .64, emoji: "🏕️", name: "Lägret",            action: "Jag går tillbaka till lägret",                              aura: [255, 172, 90] },
+    { x: .86, y: .26, emoji: "🌊", name: "Floden",            action: "Jag går ner till floden",                                   aura: [120, 185, 205] },
+    { x: .15, y: .20, emoji: "🌳", name: "Fyrträden",         action: "Jag vandrar till Fyrträden",                                aura: [150, 205, 125] },
+    { x: .07, y: .72, emoji: "⛰️", name: "Månstenen",         action: "Jag vandrar den långa vägen mot Mormun och Månstenen",      aura: [160, 205, 255] },
+    { x: .72, y: .80, emoji: "🌿", name: "Jaktmarkerna",      action: "Jag smyger ut till jaktmarkerna för att jaga",              aura: [145, 190, 110] },
+    { x: .30, y: .83, emoji: "🌲", name: "Skuggklanens gräns", action: "Jag går till gränsen mot Skuggklanen",                      aura: [200, 120, 110] },
+    { x: .60, y: .46, emoji: "🍃", name: "Läkarkattens lya",  action: "Jag tittar in hos läkarkatten",                             aura: [140, 215, 145] },
+    { x: .38, y: .34, emoji: "🌾", name: "Träningssvackan",   action: "Jag går till träningssvackan för att öva kampgrepp",        aura: [210, 185, 120] },
   ],
   choiceSlots: [[.46, .22], [.70, .60], [.22, .52]],
-  trees: Array.from({ length: 26 }, (_, i) => ({
-    // slumpade men stabila träd (samma skog varje gång)
-    x: ((i * 73) % 97) / 97, y: ((i * 41) % 89) / 89, big: i % 3 === 0,
-  })),
   cat: { x: .5, y: .72, tx: null, ty: null },
+  catRGB: [158, 168, 170],            // silvergrå tills referensbilden ger en egen färg
+  facing: 1, phase: 0,
+  trail: [], lastTrail: { x: .5, y: .72 },
+  terrain: null,                       // statisk terräng, ritas en gång till offscreen-canvas
   keys: {}, raf: null, refImg: null, near: null, open: false,
 };
+
+// stabil slump — samma skog varje gång kartan ritas
+function mulberry32(a){
+  return () => {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// flodens mittlinje (kvadratisk bézier) — används av terräng och vattenglitter
+function riverPoint(t, W, H){
+  const x0 = .72 * W, y0 = 0, cx = .88 * W, cy = .30 * H, x1 = 1.02 * W, y1 = .52 * H;
+  const s = 1 - t;
+  return [s * s * x0 + 2 * s * t * cx + t * t * x1, s * s * y0 + 2 * s * t * cy + t * t * y1];
+}
 
 function toggleMap(){
   MAP.open = !MAP.open;
@@ -570,8 +587,21 @@ function toggleMap(){
   const c = $("map-canvas");
   const dpr = window.devicePixelRatio || 1;
   c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr;
+  if (!MAP.terrain || MAP.terrain.width !== c.width) MAP.terrain = buildTerrain(c.width, c.height);
   if (state.reference && !MAP.refImg) {
     MAP.refImg = new Image();
+    MAP.refImg.onload = () => {
+      // kattens kartfärg hämtas från referensbilden så att rätt katt vandrar omkring
+      const s = document.createElement("canvas"); s.width = s.height = 12;
+      const sc = s.getContext("2d");
+      sc.drawImage(MAP.refImg, 0, 0, 12, 12);
+      try {
+        const d = sc.getImageData(2, 2, 8, 8).data;
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+        MAP.catRGB = [r, g, b].map((v) => Math.round(70 + (v / n) * .7));
+      } catch {}
+    };
     MAP.refImg.src = `data:${state.reference.mime};base64,${state.reference.base64}`;
   }
   mapLoop();
@@ -608,45 +638,242 @@ function mapConfirm(){
   choose(action);
 }
 
+// ── terrängen ritas en gång: mark, flod, stigar, skog, sten, gräs, vinjett ──
+function buildTerrain(W, H){
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const ctx = c.getContext("2d"), u = W / 100, rng = mulberry32(7);
+
+  // mark + månljus snett från nordväst
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#17271c"); g.addColorStop(1, "#0b1510");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const moon = ctx.createLinearGradient(0, 0, W * .7, H);
+  moon.addColorStop(0, "rgba(180,210,220,.07)"); moon.addColorStop(1, "rgba(180,210,220,0)");
+  ctx.fillStyle = moon; ctx.fillRect(0, 0, W, H);
+
+  // ängar — mjuka ljusare fält
+  for (let i = 0; i < 9; i++) {
+    const mx = rng() * W, my = rng() * H, mr = (12 + rng() * 18) * u;
+    const mg = ctx.createRadialGradient(mx, my, 0, mx, my, mr);
+    mg.addColorStop(0, "rgba(70,100,60,.13)"); mg.addColorStop(1, "rgba(70,100,60,0)");
+    ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mx, my, mr, 0, 7); ctx.fill();
+  }
+
+  // upptrampade stigar från lägret till varje plats
+  const camp = MAP.landmarks[0];
+  ctx.setLineDash([1.4 * u, 2.1 * u]);
+  ctx.lineCap = "round";
+  MAP.landmarks.slice(1).forEach((l) => {
+    const mx = (camp.x + l.x) / 2 + (rng() - .5) * .12;
+    const my = (camp.y + l.y) / 2 + (rng() - .5) * .12;
+    ctx.strokeStyle = "rgba(195,180,145,.09)"; ctx.lineWidth = 1 * u;
+    ctx.beginPath(); ctx.moveTo(camp.x * W, camp.y * H);
+    ctx.quadraticCurveTo(mx * W, my * H, l.x * W, l.y * H); ctx.stroke();
+  });
+  ctx.setLineDash([]);
+
+  // floden: bank, vatten, mittfåra
+  [["#152a30", 10], ["#27454f", 7.2], ["#2e5560", 4.2]].forEach(([col, w]) => {
+    ctx.strokeStyle = col; ctx.lineWidth = w * u;
+    ctx.beginPath(); ctx.moveTo(.72 * W, 0);
+    ctx.quadraticCurveTo(.88 * W, .30 * H, 1.02 * W, .52 * H); ctx.stroke();
+  });
+  // klivstenar
+  for (const t of [.30, .38]) {
+    const [sx, sy] = riverPoint(t, W, H);
+    ctx.fillStyle = "#46514a";
+    for (const o of [-1.6, 0, 1.7]) {
+      ctx.beginPath(); ctx.ellipse(sx + o * u, sy + o * .5 * u, .8 * u, .55 * u, .3, 0, 7); ctx.fill();
+    }
+  }
+
+  // gläntor under platserna
+  MAP.landmarks.forEach((l) => {
+    const cg = ctx.createRadialGradient(l.x * W, l.y * H, 0, l.x * W, l.y * H, 7 * u);
+    cg.addColorStop(0, "rgba(215,195,150,.07)"); cg.addColorStop(1, "rgba(215,195,150,0)");
+    ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(l.x * W, l.y * H, 7 * u, 0, 7); ctx.fill();
+  });
+
+  // granskog i dungar — målas i djupordning
+  const clusters = [
+    [.05, .45, .20, 15], [.18, .10, .14, 10], [.42, .06, .12, 8],
+    [.14, .86, .14, 9], [.34, .99, .12, 8], [.80, .60, .11, 7],
+    [.88, .92, .13, 9], [.56, .26, .09, 4], [.94, .12, .08, 5],
+  ];
+  const pines = [];
+  clusters.forEach(([cx2, cy2, r, n]) => {
+    for (let i = 0; i < n; i++) {
+      const x = cx2 + (rng() - .5) * 2 * r, y = cy2 + (rng() - .5) * 2 * r;
+      if (x < .01 || x > .99 || y < .03 || y > .99) continue;
+      if (MAP.landmarks.some((l) => Math.hypot(l.x - x, l.y - y) < .085)) continue;
+      if (MAP.choiceSlots.some((s) => Math.hypot(s[0] - x, s[1] - y) < .06)) continue;
+      if (y < .56) { // inte i floden
+        const [rx] = riverPoint(Math.max(0, Math.min(1, y / .52)), 1, 1);
+        if (Math.abs(x - rx) < .08) continue;
+      }
+      pines.push({ x, y, s: (2 + rng() * 2.4) * u, shade: Math.floor(rng() * 3) });
+    }
+  });
+  const shades = ["#101e14", "#152718", "#1a301d"];
+  pines.sort((a, b) => a.y - b.y).forEach((p) => {
+    const px = p.x * W, py = p.y * H, s = p.s;
+    ctx.fillStyle = "rgba(0,0,0,.28)";
+    ctx.beginPath(); ctx.ellipse(px + .15 * s, py + .15 * s, .85 * s, .28 * s, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#241a10";
+    ctx.fillRect(px - .08 * s, py - .15 * s, .16 * s, .35 * s);
+    ctx.fillStyle = shades[p.shade];
+    [[.95, 0], [.74, .42], [.52, .78]].forEach(([w, lift]) => {
+      ctx.beginPath();
+      ctx.moveTo(px - w * s * .5, py - lift * s);
+      ctx.lineTo(px + w * s * .5, py - lift * s);
+      ctx.lineTo(px, py - (lift + .75) * s);
+      ctx.closePath(); ctx.fill();
+    });
+    // månljus på högersidan
+    ctx.fillStyle = "rgba(160,190,200,.08)";
+    ctx.beginPath();
+    ctx.moveTo(px + .1 * s, py - 1.45 * s);
+    ctx.lineTo(px + .26 * s, py - .55 * s);
+    ctx.lineTo(px + .05 * s, py - .6 * s);
+    ctx.closePath(); ctx.fill();
+  });
+
+  // stenar och grästuvor
+  for (let i = 0; i < 9; i++) {
+    const x = rng() * W, y = rng() * H;
+    ctx.fillStyle = "#39423b";
+    ctx.beginPath(); ctx.ellipse(x, y, (0.7 + rng() * .8) * u, (0.45 + rng() * .4) * u, rng(), 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(170,195,200,.12)";
+    ctx.beginPath(); ctx.ellipse(x - .2 * u, y - .2 * u, .35 * u, .2 * u, .4, 0, 7); ctx.fill();
+  }
+  ctx.strokeStyle = "rgba(115,145,90,.16)"; ctx.lineWidth = .22 * u;
+  for (let i = 0; i < 80; i++) {
+    const x = rng() * W, y = rng() * H, s = (.6 + rng() * .8) * u;
+    for (const a of [-.5, 0, .5]) {
+      ctx.beginPath(); ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + a * s * .6, y - s * .7, x + a * s, y - s); ctx.stroke();
+    }
+  }
+  // nattblommor vid Fyrträden
+  for (let i = 0; i < 10; i++) {
+    const x = (.15 + (rng() - .5) * .16) * W, y = (.22 + (rng() - .5) * .14) * H;
+    ctx.fillStyle = "rgba(225,225,245,.30)";
+    ctx.beginPath(); ctx.arc(x, y, .28 * u, 0, 7); ctx.fill();
+  }
+
+  // kompassros
+  ctx.strokeStyle = "rgba(201,191,166,.45)"; ctx.lineWidth = .25 * u;
+  const kx = W - 5 * u, ky = 6.4 * u;
+  ctx.beginPath(); ctx.arc(kx, ky, 2.2 * u, 0, 7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(kx, ky + 1.5 * u); ctx.lineTo(kx, ky - 1.5 * u);
+  ctx.moveTo(kx - .7 * u, ky - .6 * u); ctx.lineTo(kx, ky - 1.5 * u); ctx.lineTo(kx + .7 * u, ky - .6 * u); ctx.stroke();
+  ctx.fillStyle = "rgba(201,191,166,.6)"; ctx.font = `${1.8 * u}px Grenze, serif`;
+  ctx.textAlign = "center"; ctx.fillText("N", kx, ky - 2.9 * u);
+
+  // vinjett — mörka kanter som i en gammal karta
+  const v = ctx.createRadialGradient(W / 2, H * .45, H * .3, W / 2, H * .5, W * .72);
+  v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.5)");
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = "rgba(201,191,166,.30)"; ctx.font = `italic ${2.2 * u}px Alegreya, serif`;
+  ctx.textAlign = "left";
+  ctx.fillText("~ klanens territorium ~", 2.5 * u, H - 2.2 * u);
+  ctx.textAlign = "center";
+  return c;
+}
+
+// ── den tecknade katten: kropp, svans, öron — vänd åt gånghållet ──
+function drawCat(ctx, cx, cy, u, now){
+  const [r, g, b] = MAP.catRGB;
+  const col = (m) => `rgb(${Math.round(r * m)},${Math.round(g * m)},${Math.round(b * m)})`;
+  const moving = MAP.phase !== MAP.lastPhase;
+  ctx.fillStyle = "rgba(0,0,0,.35)";
+  ctx.beginPath(); ctx.ellipse(cx, cy + 1.7 * u, 2.7 * u, .8 * u, 0, 0, 7); ctx.fill();
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(MAP.facing, 1);
+  const bob = moving ? -Math.abs(Math.sin(MAP.phase)) * .45 * u : 0;
+  ctx.translate(0, bob);
+
+  // svans — viftar lugnt vid stillhet, följer farten i rörelse
+  const sway = Math.sin(now / (moving ? 180 : 480)) * (moving ? .5 : .9) * u;
+  ctx.strokeStyle = col(.85); ctx.lineWidth = .75 * u; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-2.1 * u, -.1 * u);
+  ctx.quadraticCurveTo(-3.4 * u, -1.1 * u, -3.7 * u + sway * .3, -2.5 * u + sway); ctx.stroke();
+
+  // ben i steg
+  ctx.strokeStyle = col(.7); ctx.lineWidth = .55 * u;
+  const sw = moving ? Math.sin(MAP.phase) * .7 * u : 0;
+  [[1.3, sw], [.7, -sw], [-1.0, -sw], [-1.6, sw]].forEach(([lx, o]) => {
+    ctx.beginPath(); ctx.moveTo(lx * u, .9 * u); ctx.lineTo(lx * u + o, 2.1 * u); ctx.stroke();
+  });
+
+  // kropp + huvud + öron
+  ctx.fillStyle = col(1);
+  ctx.beginPath(); ctx.ellipse(0, 0, 2.3 * u, 1.35 * u, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(2.2 * u, -1.1 * u, 1.2 * u, 0, 7); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(1.45 * u, -1.9 * u); ctx.lineTo(1.75 * u, -3.1 * u); ctx.lineTo(2.25 * u, -2.1 * u);
+  ctx.moveTo(2.5 * u, -2.15 * u); ctx.lineTo(2.95 * u, -3.0 * u); ctx.lineTo(3.1 * u, -1.85 * u);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = col(.55);
+  ctx.beginPath(); ctx.moveTo(1.65 * u, -2.1 * u); ctx.lineTo(1.8 * u, -2.75 * u); ctx.lineTo(2.1 * u, -2.15 * u); ctx.closePath(); ctx.fill();
+  // öga
+  ctx.fillStyle = "#8fd072";
+  ctx.beginPath(); ctx.arc(2.62 * u, -1.25 * u, .17 * u, 0, 7); ctx.fill();
+  ctx.restore();
+  MAP.lastPhase = MAP.phase;
+}
+
 function mapLoop(){
   const c = $("map-canvas"), ctx = c.getContext("2d");
-  const W = c.width, H = c.height, u = W / 100; // u = ritskala
+  const W = c.width, H = c.height, u = W / 100, now = Date.now();
 
   // — förflyttning —
   const sp = .0040;
   const k = MAP.keys, cat = MAP.cat;
   let dx = (k.ArrowRight || k.d ? 1 : 0) - (k.ArrowLeft || k.a ? 1 : 0);
   let dy = (k.ArrowDown || k.s ? 1 : 0) - (k.ArrowUp || k.w ? 1 : 0);
-  if (dx || dy) { cat.tx = null; const n = Math.hypot(dx, dy); cat.x += sp * dx / n; cat.y += sp * dy / n * 1.4; }
-  else if (cat.tx != null) {
+  let moving = false;
+  if (dx || dy) {
+    cat.tx = null; const n = Math.hypot(dx, dy);
+    cat.x += sp * dx / n; cat.y += sp * dy / n * 1.4;
+    if (dx) MAP.facing = dx > 0 ? 1 : -1;
+    moving = true;
+  } else if (cat.tx != null) {
     const ddx = cat.tx - cat.x, ddy = cat.ty - cat.y, d = Math.hypot(ddx, ddy);
     if (d < .008) cat.tx = null;
-    else { cat.x += sp * ddx / d; cat.y += sp * ddy / d * 1.4; }
+    else {
+      cat.x += sp * ddx / d; cat.y += sp * ddy / d * 1.4;
+      if (Math.abs(ddx) > .004) MAP.facing = ddx > 0 ? 1 : -1;
+      moving = true;
+    }
   }
   cat.x = Math.min(.97, Math.max(.03, cat.x));
   cat.y = Math.min(.95, Math.max(.05, cat.y));
+  if (moving) MAP.phase += .17;
 
-  // — marken —
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, "#16241a"); g.addColorStop(1, "#0d1810");
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // tassavtryck-spår
+  if (Math.hypot(cat.x - MAP.lastTrail.x, cat.y - MAP.lastTrail.y) > .024) {
+    MAP.trail.push({ x: cat.x, y: cat.y, age: 0 });
+    MAP.lastTrail = { x: cat.x, y: cat.y };
+    if (MAP.trail.length > 14) MAP.trail.shift();
+  }
 
-  // floden i nordost
-  ctx.strokeStyle = "#2b4a52"; ctx.lineWidth = 7 * u;
-  ctx.beginPath(); ctx.moveTo(W * .72, 0);
-  ctx.quadraticCurveTo(W * .88, H * .3, W * 1.02, H * .52); ctx.stroke();
-  ctx.strokeStyle = "#3a5e68"; ctx.lineWidth = 1.2 * u;
-  ctx.beginPath(); ctx.moveTo(W * .73, 0);
-  ctx.quadraticCurveTo(W * .89, H * .3, W * 1.02, H * .50); ctx.stroke();
-
-  // skog
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  MAP.trees.forEach((t) => {
-    ctx.font = `${(t.big ? 4.5 : 3.2) * u}px serif`;
-    ctx.globalAlpha = .5;
-    ctx.fillText("🌲", t.x * W, t.y * H);
-    ctx.globalAlpha = 1;
-  });
+  // — terräng + levande vatten —
+  ctx.drawImage(MAP.terrain, 0, 0);
+  ctx.save();
+  ctx.lineCap = "round";
+  for (const [speed, width, alpha] of [[40, .9, .22], [65, .5, .16]]) {
+    ctx.setLineDash([2.6 * u, 4.2 * u]);
+    ctx.lineDashOffset = -(now / speed) % (6.8 * u);
+    ctx.strokeStyle = `rgba(150,200,210,${alpha})`; ctx.lineWidth = width * u;
+    ctx.beginPath(); ctx.moveTo(.72 * W, 0);
+    ctx.quadraticCurveTo(.88 * W, .30 * H, 1.02 * W, .52 * H); ctx.stroke();
+  }
+  ctx.restore();
 
   // — platser och val —
   const targets = mapTargets();
@@ -656,38 +883,82 @@ function mapLoop(){
     const d = Math.hypot(t.x - cat.x, t.y - cat.y);
     if (d < nearDist) { nearDist = d; MAP.near = t; }
   });
-  const pulse = .6 + .4 * Math.sin(Date.now() / 350);
-  targets.forEach((t) => {
+
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  targets.forEach((t, i) => {
     const px = t.x * W, py = t.y * H;
+    const flicker = .65 + .35 * Math.sin(now / 320 + i * 1.7);
     if (t.kind === "val") {
-      ctx.fillStyle = `rgba(224,164,60,${.16 * pulse})`;
-      ctx.beginPath(); ctx.arc(px, py, 6 * u, 0, 7); ctx.fill();
+      // gyllene tassavtryck — ett av berättarens val
+      const pul = .75 + .25 * Math.sin(now / 350 + i);
+      const gg = ctx.createRadialGradient(px, py, 0, px, py, 6 * u * pul);
+      gg.addColorStop(0, "rgba(224,164,60,.30)"); gg.addColorStop(1, "rgba(224,164,60,0)");
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(px, py, 6 * u * pul, 0, 7); ctx.fill();
+      ctx.fillStyle = "rgba(240,185,80,.95)";
+      ctx.beginPath(); ctx.ellipse(px, py + .5 * u, .95 * u, .75 * u, 0, 0, 7); ctx.fill();
+      [[-.85, -.7], [-.3, -1.05], [.3, -1.05], [.85, -.7]].forEach(([ox, oy]) => {
+        ctx.beginPath(); ctx.arc(px + ox * u, py + oy * u, .34 * u, 0, 7); ctx.fill();
+      });
+      ctx.fillStyle = "#e0a43c"; ctx.font = `${2.3 * u}px Grenze, serif`;
+      ctx.fillText("ett val", px, py + 3.4 * u);
+    } else {
+      const [ar, ag, ab] = t.aura;
+      const gg = ctx.createRadialGradient(px, py, 0, px, py, 8 * u);
+      gg.addColorStop(0, `rgba(${ar},${ag},${ab},${.13 * flicker})`); gg.addColorStop(1, `rgba(${ar},${ag},${ab},0)`);
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(px, py, 8 * u, 0, 7); ctx.fill();
+      ctx.font = `${4.6 * u}px serif`;
+      ctx.fillText(t.emoji, px, py);
+      ctx.font = `${2.5 * u}px Grenze, serif`;
+      ctx.fillStyle = "rgba(10,16,10,.75)";
+      ctx.fillText(t.name, px + .15 * u, py + 5.2 * u + .15 * u);
+      ctx.fillStyle = "#d6cbab";
+      ctx.fillText(t.name, px, py + 5.2 * u);
     }
     if (MAP.near === t) {
-      ctx.strokeStyle = "rgba(224,164,60,.85)"; ctx.lineWidth = .5 * u;
-      ctx.beginPath(); ctx.arc(px, py, 5 * u, 0, 7); ctx.stroke();
+      ctx.strokeStyle = "rgba(224,164,60,.9)"; ctx.lineWidth = .45 * u;
+      ctx.setLineDash([1.2 * u, 1.2 * u]); ctx.lineDashOffset = -now / 60;
+      ctx.beginPath(); ctx.arc(px, py, 5.2 * u, 0, 7); ctx.stroke();
+      ctx.setLineDash([]);
     }
-    ctx.font = `${5 * u}px serif`;
-    ctx.fillText(t.emoji, px, py);
-    ctx.font = `${2.6 * u}px Grenze, serif`;
-    ctx.fillStyle = t.kind === "val" ? "#e0a43c" : "#c9bfa6";
-    const label = t.kind === "val" ? "🐾 val" : t.name;
-    ctx.fillText(label, px, py + 5.4 * u);
   });
 
-  // — katten —
-  const cx = cat.x * W, cy = cat.y * H, R = 3.4 * u;
-  if (MAP.refImg && MAP.refImg.complete && MAP.refImg.naturalWidth) {
-    ctx.save();
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.clip();
-    ctx.drawImage(MAP.refImg, cx - R, cy - R, R * 2, R * 2);
-    ctx.restore();
-    ctx.strokeStyle = "#e0a43c"; ctx.lineWidth = .4 * u;
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
-  } else {
-    ctx.font = `${5.5 * u}px serif`;
-    ctx.fillText("🐱", cx, cy);
+  // — dimslöjor —
+  for (let i = 0; i < 3; i++) {
+    const fx = (((now / (26000 + i * 9000)) + i * .37) % 1.3 - .15) * W;
+    const fy = (.25 + i * .27) * H;
+    const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, 20 * u);
+    fg.addColorStop(0, "rgba(160,180,170,.07)"); fg.addColorStop(1, "rgba(160,180,170,0)");
+    ctx.fillStyle = fg;
+    ctx.beginPath(); ctx.ellipse(fx, fy, 20 * u, 6 * u, 0, 0, 7); ctx.fill();
   }
+
+  // — tassavtryck efter katten —
+  MAP.trail.forEach((p) => {
+    p.age++;
+    const a = Math.max(0, 1 - p.age / 110) * .35;
+    ctx.fillStyle = `rgba(201,191,166,${a})`;
+    ctx.beginPath(); ctx.arc(p.x * W - .4 * u, p.y * H + 1.4 * u, .26 * u, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x * W + .4 * u, p.y * H + 1.7 * u, .26 * u, 0, 7); ctx.fill();
+  });
+
+  // — eldflugor på kartan —
+  for (let i = 0; i < 6; i++) {
+    const bx = [.12, .30, .55, .75, .88, .42][i], by = [.55, .75, .88, .68, .80, .45][i];
+    const fx = (bx + Math.sin(now / (2300 + i * 700) + i * 2) * .04) * W;
+    const fy = (by + Math.cos(now / (3100 + i * 500) + i) * .04) * H;
+    const tw = .4 + .6 * Math.abs(Math.sin(now / 900 + i * 2.4));
+    ctx.fillStyle = `rgba(255,217,122,${.55 * tw})`;
+    ctx.beginPath(); ctx.arc(fx, fy, .32 * u, 0, 7); ctx.fill();
+    ctx.fillStyle = `rgba(255,217,122,${.12 * tw})`;
+    ctx.beginPath(); ctx.arc(fx, fy, 1.1 * u, 0, 7); ctx.fill();
+  }
+
+  // — mjukt ljus kring katten + katten själv —
+  const cx2 = cat.x * W, cy2 = cat.y * H;
+  const cl = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, 13 * u);
+  cl.addColorStop(0, "rgba(255,235,180,.07)"); cl.addColorStop(1, "rgba(255,235,180,0)");
+  ctx.fillStyle = cl; ctx.beginPath(); ctx.arc(cx2, cy2, 13 * u, 0, 7); ctx.fill();
+  drawCat(ctx, cx2, cy2, u, now);
 
   // — handlingsknappen —
   const btn = $("map-action");
