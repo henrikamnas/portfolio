@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bildverkstan — Warriors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Grenze:wght@500;700&family=Alegreya:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night:#0e1712; --moss:#18241c; --moss-2:#1f2f25;
+    --parchment:#ece3cc; --parchment-dim:#c9bfa6;
+    --amber:#e0a43c; --moon:#93b3bf; --bark:#5a4632;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{
+    background:var(--night);
+    background-image:radial-gradient(ellipse 80% 50% at 50% -10%, #1b2a20 0%, transparent 60%);
+    color:var(--parchment);
+    font-family:'Alegreya', Georgia, serif;
+    font-size:18px; line-height:1.55;
+  }
+  .wrap{max-width:820px; margin:0 auto; padding:24px 18px 80px}
+  h1,h2{font-family:'Grenze', serif; font-weight:700; color:var(--amber)}
+  h1{font-size:2.2rem; text-align:center; margin:18px 0 4px}
+  h2{font-size:1.4rem; margin:34px 0 10px}
+  .subtitle{text-align:center; color:var(--moon); font-style:italic; margin-bottom:30px}
+  ol{margin:10px 0 10px 24px}
+  li{margin:6px 0}
+  a{color:var(--moon)}
+  textarea{
+    width:100%; background:var(--moss); color:var(--parchment);
+    border:1px solid var(--bark); border-radius:8px;
+    padding:11px 13px; font-family:inherit; font-size:1rem; min-height:70px; resize:vertical;
+  }
+  .card{
+    background:var(--moss); border:1px solid var(--bark); border-radius:12px;
+    padding:16px 18px; margin:14px 0;
+  }
+  .card h3{font-family:'Grenze', serif; color:var(--parchment); font-size:1.15rem; margin-bottom:4px}
+  .card .file{color:var(--amber); font-family:monospace; font-size:.9rem}
+  .card p.prompt{
+    color:var(--parchment-dim); font-size:.88rem; margin:8px 0;
+    background:var(--night); border-radius:8px; padding:10px 12px;
+  }
+  button{
+    font-family:'Grenze', serif; font-size:1rem;
+    background:var(--moss-2); color:var(--parchment);
+    border:1px solid var(--bark); border-radius:8px;
+    padding:8px 16px; cursor:pointer;
+  }
+  button:hover{border-color:var(--amber)}
+  .done{color:#9fc78a}
+  .hint{color:var(--parchment-dim); font-style:italic; font-size:.9rem}
+  .back{display:block; text-align:center; margin-top:40px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🖼️ Bildverkstan</h1>
+  <p class="subtitle">Förbered spelets bilder gratis i Google AI Studio — en mysig aktivitet före äventyret</p>
+
+  <h2>Så här gör ni</h2>
+  <ol>
+    <li>Öppna <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> och välj en bildmodell (t.ex. <em>Nano Banana</em>) i lekplatsen.</li>
+    <li>Börja med <strong>kattporträttet</strong> nedan — gör om tills hon är nöjd! Spara bilden.</li>
+    <li>För varje <strong>scen</strong>: bifoga kattporträttet i chatten, klistra in scenens prompt, generera och spara.</li>
+    <li>Lägg de sparade bilderna i mappen <code class="file">warriors-spel/public/scenes/</code> med exakt det filnamn som står på kortet (t.ex. <code class="file">camp-dawn.png</code>).</li>
+    <li>Saknas en scen visas en stämningsbild i stället — ni kan fylla på banken när som helst.</li>
+  </ol>
+  <p class="hint">Tips: gör det här tillsammans — hon är art director och godkänner varje bild. 🐾</p>
+
+  <h2>1. Kattporträttet (referensbilden)</h2>
+  <div class="card">
+    <h3>Beskriv katten — prompten uppdateras automatiskt</h3>
+    <textarea id="desc" placeholder="t.ex. a slender silver-grey tabby she-cat with white paws, green eyes and a small scar across her nose">a slender silver-grey tabby she-cat with white paws and green eyes</textarea>
+    <p class="prompt" id="char-prompt"></p>
+    <button onclick="copy('char-prompt', this)">Kopiera prompten 📋</button>
+    <p class="hint" style="margin-top:8px">Har hon ritat katten själv? Bifoga teckningen i AI Studio och lägg till: <em>"This is a child's drawing of her warrior cat — keep every detail of the colors and markings faithful to the drawing."</em></p>
+  </div>
+
+  <h2>2. Scenerna (16 st)</h2>
+  <p class="hint">Bifoga kattporträttet till varje prompt så att katten ser likadan ut i alla scener.</p>
+  <div id="scenes"></div>
+
+  <a class="back" href="/">← Tillbaka till spelet</a>
+</div>
+
+<script>
+const STYLE = "In the style of a dramatic fantasy book cover illustration for the Warriors cat series, rich painted detail, cinematic lighting. Wide cinematic composition, landscape orientation, no text or captions.";
+const REF = "The attached image is the character reference for the player's warrior cat. Illustrate this scene featuring that exact cat (same colors, markings, features):";
+
+// samma taggar som SCENE_TAGS i server.js — berättaren väljer bland dessa
+const SCENES = [
+  ["camp-dawn", "Lägret i gryningen", "the forest camp of a warrior cat clan at dawn, soft pink light, thin mist drifting between the dens of woven branches"],
+  ["camp-day", "Lägret på dagen", "the busy forest camp of a warrior cat clan in daylight, cats sharing prey near the fresh-kill pile, warm sunshine through the trees"],
+  ["camp-night", "Lägret på natten", "the forest camp of a warrior cat clan at night under a starry sky, moonlight silvering the dens, calm and safe"],
+  ["forest-hunt", "Jakt i skogen", "the cat stalking prey through dense ferns in a deep green forest, low hunting crouch, dappled light"],
+  ["forest-path", "På vandring i skogen", "the cat walking along a winding forest path between tall oaks, adventurous mood, golden light rays"],
+  ["river-crossing", "Vid floden", "the cat at the bank of a wide sparkling river, stepping stones, reeds and dragonflies, bright sky"],
+  ["border-meeting", "Möte vid gränsen", "the cat facing another cat at a forest border marked by a scent line, tense but not violent, dramatic sky"],
+  ["battle", "Strid", "the cat in a dramatic but bloodless confrontation between rival cat clans in a forest clearing, fur bristling, dynamic poses, stormy light"],
+  ["fourtrees", "Fyrträden", "the great hollow of Fourtrees with four giant oaks, many cats gathered below a large rock under the full moon"],
+  ["moonstone", "Månstenen", "a glittering crystal stone glowing with cold silver light inside a dark cavern, the cat approaching in awe"],
+  ["medicine-den", "Läkarkattens lya", "the medicine cat's den in a rock cleft, neat piles of dried herbs, soft light, the cat being tended"],
+  ["storm-rain", "Storm och regn", "the cat in a forest during heavy rain and wind, dramatic clouds, wet fur, determined expression"],
+  ["snow", "Snö", "the cat in a snow-covered forest in pale winter light, breath visible, paw prints in the snow"],
+  ["starclan-dream", "Dröm från Stjärnklanen", "the cat in a luminous dream meadow under a sky full of swirling stars, a faint starry spirit cat nearby, magical atmosphere"],
+  ["mentor-training", "Träning med mentorn", "the cat training fighting moves with an older mentor cat in a sandy forest hollow, playful energy, afternoon light"],
+  ["night-patrol", "Nattpatrull", "the cat on a moonlit patrol along the territory border with two clanmates, alert ears, deep blue night"],
+];
+
+function charPrompt(){
+  const d = document.getElementById("desc").value.trim() || "a young warrior cat";
+  document.getElementById("char-prompt").textContent =
+    `Create a character reference portrait of a warrior cat with this appearance: ${d}. ${STYLE.replace("Wide cinematic composition, landscape orientation, ", "Full-body portrait, standing proudly in a forest clearing, neutral pose, ")}`;
+}
+document.getElementById("desc").addEventListener("input", charPrompt);
+charPrompt();
+
+const box = document.getElementById("scenes");
+SCENES.forEach(([tag, title, scene]) => {
+  const div = document.createElement("div");
+  div.className = "card";
+  div.innerHTML = `
+    <h3>${title} — spara som <span class="file">${tag}.png</span></h3>
+    <p class="prompt" id="p-${tag}">${REF} ${scene}. ${STYLE}</p>
+    <button onclick="copy('p-${tag}', this)">Kopiera prompten 📋</button>`;
+  box.appendChild(div);
+});
+
+function copy(id, btn){
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(() => {
+    btn.textContent = "Kopierad! ✓";
+    btn.classList.add("done");
+    setTimeout(() => { btn.textContent = "Kopiera prompten 📋"; btn.classList.remove("done"); }, 1600);
+  });
+}
+</script>
+</body>
+</html>

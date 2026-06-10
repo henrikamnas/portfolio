@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+  <defs>
+    <radialGradient id="sky" cx="50%" cy="0%" r="90%">
+      <stop offset="0%" stop-color="#1f3527"/>
+      <stop offset="100%" stop-color="#0e1712"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#sky)"/>
+  <circle cx="640" cy="90" r="38" fill="#b4cdd6" opacity="0.85"/>
+  <circle cx="640" cy="90" r="58" fill="#b4cdd6" opacity="0.12"/>
+  <path d="M0 500 L0 400 L60 410 L90 320 L120 405 L170 395 L210 290 L250 400 L310 390 L350 330 L390 405 L450 395 L490 270 L530 400 L590 388 L630 340 L670 402 L730 392 L770 310 L800 395 L800 500 Z" fill="#080f08"/>
+  <text x="400" y="245" text-anchor="middle" font-family="Georgia, serif" font-size="26" fill="#c9bfa6" font-style="italic">Stjärnklanen målar denna scen i dina tankar …</text>
+  <text x="400" y="290" text-anchor="middle" font-size="34">🐾</text>
+</svg>

@@ -33,10 +33,19 @@ server.js (Express)
    └─ POST /api/scene-image  → Gemini (bild)  → scenbild (referensbild + scenprompt)
 ```
 
+### Två bildlägen
+
+**`bank` (standard, gratis):** scenbilderna förgenereras i [Google AI Studio](https://aistudio.google.com)
+via **Bildverkstan** (`/setup.html`) — en guidad promptlista där man skapar
+kattporträttet och 16 scenbilder tillsammans, och sparar dem i `public/scenes/`.
+Berättaren väljer sedan rätt bild per scen via en `imageTag`. Laddar spelaren
+upp en teckning mitt i spelet visas teckningen själv som scenbild medan
+berättaren väver in den i handlingen.
+
+**`live` (kräver betalnivå hos Google):** varje scen målas unikt av bildmodellen.
 Nyckeln till att katten ser likadan ut i alla scener: den godkända
-**referensbilden** skickas med i varje scenbildsanrop. Spelaren kan dessutom
-ladda upp egna teckningar mitt i spelet (kamplägret, en rivalkatt, ett byte) —
-de vävs in i nästa scen, både i bilden och i berättelsen.
+**referensbilden** skickas med i varje scenbildsanrop, och egna teckningar
+vävs in direkt i scenbilden. Aktiveras med `IMAGE_MODE=live` i `.env`.
 
 ## Anpassa
 

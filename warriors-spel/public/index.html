@@ -21,7 +21,33 @@
     font-size:19px; line-height:1.55;
     min-height:100vh;
   }
-  .wrap{max-width:760px; margin:0 auto; padding:24px 18px 80px}
+  .wrap{max-width:760px; margin:0 auto; padding:24px 18px 80px; position:relative; z-index:1}
+
+  /* —— levande natthimmel: måne, stjärnor, skogssiluett, eldflugor —— */
+  .ambient{position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden}
+  .moon{position:absolute; top:48px; right:13%; width:46px; height:46px; border-radius:50%;
+    background:radial-gradient(circle at 38% 35%, #eef5f7 0%, #b4cdd6 55%, #84a0ab 100%);
+    box-shadow:0 0 36px 12px rgba(147,179,191,.22)}
+  .star{position:absolute; width:2px; height:2px; border-radius:50%; background:#cfe2e8;
+    animation:twinkle 4s ease-in-out infinite}
+  @keyframes twinkle{0%,100%{opacity:.12} 50%{opacity:.75}}
+  .forest{position:absolute; bottom:0; left:0; right:0; height:120px; opacity:.55;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0 120 L0 85 L25 90 L40 50 L55 88 L78 84 L98 36 L118 86 L148 82 L168 56 L188 88 L218 84 L242 26 L266 86 L296 80 L318 60 L342 88 L376 82 L398 40 L422 86 L456 84 L478 54 L500 88 L536 82 L558 30 L582 86 L616 80 L640 58 L662 88 L696 84 L718 38 L742 86 L776 81 L798 50 L822 88 L856 82 L880 24 L904 86 L936 80 L958 62 L982 88 L1016 84 L1038 44 L1062 86 L1096 81 L1118 56 L1142 88 L1172 84 L1200 66 L1200 120 Z' fill='%23080f08'/%3E%3C/svg%3E") bottom/100% 100% no-repeat}
+  .firefly{position:absolute; width:4px; height:4px; border-radius:50%;
+    background:#ffd97a; box-shadow:0 0 9px 3px rgba(255,217,122,.4);
+    animation:drift var(--t,16s) ease-in-out infinite alternate, pulse 2.6s ease-in-out infinite}
+  @keyframes drift{from{transform:translate(0,0)} to{transform:translate(var(--dx,60px), var(--dy,-90px))}}
+  @keyframes pulse{0%,100%{opacity:.05} 50%{opacity:.85}}
+  @media (prefers-reduced-motion: reduce){
+    .star,.firefly{animation:none; opacity:.35}
+  }
+
+  /* —— mjuk intoning när en ny scen visas —— */
+  .fade-in > *{animation:scenefade .7s ease both}
+  @keyframes scenefade{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+  .fade-in .choices button{animation:scenefade .5s ease both}
+  .fade-in .choices button:nth-child(2){animation-delay:.15s}
+  .fade-in .choices button:nth-child(3){animation-delay:.3s}
   h1,h2{font-family:'Grenze', serif; font-weight:700; color:var(--amber); letter-spacing:.5px}
   h1{font-size:2.6rem; text-align:center; margin:18px 0 4px; text-shadow:0 2px 14px rgba(224,164,60,.25)}
   .subtitle{text-align:center; color:var(--moon); font-style:italic; margin-bottom:34px}
@@ -105,6 +131,10 @@
     font-family:'Grenze', serif; font-size:1.2rem;
   }
   .topbar .clan{color:var(--moon)}
+  .topbar .moons{color:var(--parchment-dim); font-size:1rem}
+  .setup-link{display:block; text-align:center; margin-top:26px; color:var(--parchment-dim);
+    font-size:.9rem; font-style:italic}
+  .setup-link a{color:var(--moon)}
   .toolrow{display:flex; gap:10px; margin-top:26px; flex-wrap:wrap}
   .toolrow button{font-size:.95rem; padding:8px 14px; opacity:.85}
   .error{
@@ -115,6 +145,7 @@
 </style>
 </head>
 <body>
+<div class="ambient" id="ambient"><div class="moon"></div><div class="forest"></div></div>
 <div class="wrap">
 
   <!-- ════════ SKÄRM 1: SKAPA DIN KATT ════════ -->
@@ -158,7 +189,7 @@
       <p class="hint">Tips: fota i bra ljus, rakt uppifrån.</p>
     </div>
 
-    <label for="style">Bildstil</label>
+    <label for="style" id="style-label">Bildstil</label>
     <select id="style">
       <option value="bokomslag">Bokomslag (som Warriors-böckerna)</option>
       <option value="akvarell">Akvarell</option>
@@ -170,6 +201,7 @@
       <button class="primary" id="btn-create" onclick="createCharacter()">Väck din katt till liv ✨</button>
     </div>
     <div id="create-error"></div>
+    <p class="setup-link hidden" id="setup-link"><a href="/setup.html">🖼️ Bildverkstan — förbered spelets bilder (gratis)</a></p>
   </section>
 
   <!-- ════════ SKÄRM 2: GODKÄNN KARAKTÄREN ════════ -->
@@ -196,6 +228,7 @@
   <section id="screen-game" class="hidden">
     <div class="topbar">
       <span id="hud-name"></span>
+      <span class="moons" id="hud-moons"></span>
       <span class="clan" id="hud-clan"></span>
     </div>
 
@@ -230,8 +263,48 @@ const state = {
   drawing: null,                      // {base64, mime} — startteckningen
   reference: null,                    // {base64, mime} — godkänd referensbild
   pendingDrawing: null,               // teckning som ska in i nästa scen
-  history: [],                        // Claude-meddelanden
+  history: [],                        // berättarens meddelanden
+  imageMode: "bank",                  // "bank" = förgenererade bilder, "live" = API
+  sceneCount: 0,
 };
+
+// natthimlen: stjärnor och eldflugor på slumpade platser
+(function ambient(){
+  const a = $id("ambient");
+  for (let i = 0; i < 40; i++) {
+    const s = document.createElement("div");
+    s.className = "star";
+    s.style.left = Math.random() * 100 + "%";
+    s.style.top = Math.random() * 55 + "%";
+    s.style.animationDelay = (Math.random() * 4) + "s";
+    a.appendChild(s);
+  }
+  for (let i = 0; i < 10; i++) {
+    const f = document.createElement("div");
+    f.className = "firefly";
+    f.style.left = (5 + Math.random() * 90) + "%";
+    f.style.bottom = (2 + Math.random() * 30) + "%";
+    f.style.setProperty("--t", (10 + Math.random() * 14) + "s");
+    f.style.setProperty("--dx", (Math.random() * 160 - 80) + "px");
+    f.style.setProperty("--dy", (-30 - Math.random() * 120) + "px");
+    f.style.animationDelay = (Math.random() * 3) + "s";
+    a.appendChild(f);
+  }
+  function $id(x){ return document.getElementById(x); }
+})();
+
+// serverns läge: bildbank (gratis) eller live-generering
+fetch("/api/config").then(r => r.json()).then(c => {
+  state.imageMode = c.imageMode || "bank";
+  if (state.imageMode === "bank") {
+    document.getElementById("setup-link").classList.remove("hidden");
+    // i bankläge skapas referensbilden i förväg — teckningsfliken blir "ladda upp din kattbild"
+    document.getElementById("tab-draw").textContent = "🎨 Ladda upp din kattbild";
+    // bildstilen ligger redan i de förgenererade bilderna
+    document.getElementById("style-label").classList.add("hidden");
+    document.getElementById("style").classList.add("hidden");
+  }
+}).catch(() => {});
 
 const $ = (id) => document.getElementById(id);
 const show = (id) => $(id).classList.remove("hidden");
@@ -297,6 +370,24 @@ async function createCharacter(){
   if (state.mode === "draw" && !state.drawing) return setError("create-error", "Ladda upp en teckning först!");
   setError("create-error", "");
 
+  // bankläge: ingen API-generering — en uppladdad bild används direkt,
+  // en textbeskrivning går rakt in i äventyret
+  if (state.imageMode === "bank") {
+    if (state.mode === "draw") {
+      state.reference = state.drawing;
+      hide("screen-create"); show("screen-approve");
+      $("approve-title").textContent = state.name;
+      $("char-img").src = `data:${state.reference.mime};base64,${state.reference.base64}`;
+      $("adjustment").closest(".freetext").classList.add("hidden");
+      document.querySelector('label[for="adjustment"]').classList.add("hidden");
+      show("approve-plate");
+    } else {
+      hide("screen-create");
+      startGame();
+    }
+    return;
+  }
+
   hide("screen-create"); show("screen-approve");
   $("approve-title").textContent = state.name;
   await generateCharacter();
@@ -335,11 +426,25 @@ async function startGame(){
   $("hud-name").textContent = "🐾 " + state.name;
   $("hud-clan").textContent = state.clan;
   const desc = state.mode === "text" ? $("cat-desc").value.trim() : "se referensbilden";
+  state.sceneCount = 0;
   state.history = [{
     role: "user",
     content: `Spelarens katt heter ${state.name}, tillhör ${state.clan} och ser ut så här: ${desc}. Börja äventyret! ${state.name} är en ung krigare som just fått sitt krigarnamn.`,
   }];
   await advance();
+}
+
+// bankläge: visa scenbild från public/scenes/<tagg>.png; spelarens egen
+// teckning visas som scenbild den tur den dyker upp i berättelsen
+function showBankImage(turn, usedDrawing){
+  const img = $("scene-img");
+  if (usedDrawing) {
+    img.src = `data:${usedDrawing.mime};base64,${usedDrawing.base64}`;
+    return;
+  }
+  const tag = String(turn.imageTag || "").replace(/[^a-z0-9-]/g, "");
+  img.onerror = () => { img.onerror = null; img.src = "/scenes/default.svg"; };
+  img.src = `/scenes/${tag || "default"}.png`;
 }
 
 async function advance(){
@@ -351,25 +456,34 @@ async function advance(){
     state.history.push({ role: "assistant", content: JSON.stringify(turn) });
 
     // 2) scenbilden
-    const imgBody = {
-      referenceBase64: state.reference.base64,
-      referenceMime: state.reference.mime,
-      scenePrompt: turn.imagePrompt,
-      style: state.style,
-    };
-    if (state.pendingDrawing) {
-      imgBody.extraBase64 = state.pendingDrawing.base64;
-      imgBody.extraMime = state.pendingDrawing.mime;
+    const usedDrawing = state.pendingDrawing;
+    if (usedDrawing) {
       state.pendingDrawing = null;
       $("btn-drawing").textContent = "🎨 Lägg till en teckning i nästa scen";
     }
     let imgOk = true;
-    try {
-      const img = await post("/api/scene-image", imgBody);
-      $("scene-img").src = `data:${img.mimeType};base64,${img.data}`;
-    } catch { imgOk = false; }
+    if (state.imageMode === "bank") {
+      showBankImage(turn, usedDrawing);
+    } else {
+      const imgBody = {
+        referenceBase64: state.reference.base64,
+        referenceMime: state.reference.mime,
+        scenePrompt: turn.imagePrompt,
+        style: state.style,
+      };
+      if (usedDrawing) {
+        imgBody.extraBase64 = usedDrawing.base64;
+        imgBody.extraMime = usedDrawing.mime;
+      }
+      try {
+        const img = await post("/api/scene-image", imgBody);
+        $("scene-img").src = `data:${img.mimeType};base64,${img.data}`;
+      } catch { imgOk = false; }
+    }
 
     // 3) visa
+    state.sceneCount++;
+    $("hud-moons").textContent = "🌙 Scen " + state.sceneCount;
     $("scene-text").textContent = turn.scene;
     const box = $("choices");
     box.innerHTML = "";
@@ -380,6 +494,10 @@ async function advance(){
       box.appendChild(b);
     });
     if (!imgOk) setError("game-error", "Bilden kunde inte målas den här gången — men berättelsen fortsätter!");
+    const gc = $("game-content");
+    gc.classList.remove("fade-in");
+    void gc.offsetWidth; // starta om intoningen
+    gc.classList.add("fade-in");
     show("game-content");
     window.scrollTo({ top: 0, behavior: "smooth" });
   } catch (e) {

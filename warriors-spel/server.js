@@ -12,6 +12,24 @@ const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const TEXT_MODEL = process.env.TEXT_MODEL || "gemini-2.5-flash";
 const IMAGE_MODEL = process.env.IMAGE_MODEL || "gemini-3.1-flash-image";
 
+// "bank" = förgenererade scenbilder i public/scenes/ (gratis — se /setup.html)
+// "live" = generera varje scenbild via Gemini-API:t (kräver betalnivå)
+const IMAGE_MODE = process.env.IMAGE_MODE === "live" ? "live" : "bank";
+
+// Scenbankens taggar — berättaren väljer en per scen, frontend visar
+// public/scenes/<tagg>.png. Samma lista driver bildverkstan i setup.html.
+const SCENE_TAGS = [
+  "camp-dawn", "camp-day", "camp-night",
+  "forest-hunt", "forest-path", "river-crossing",
+  "border-meeting", "battle", "fourtrees",
+  "moonstone", "medicine-den", "storm-rain",
+  "snow", "starclan-dream", "mentor-training", "night-patrol",
+];
+
+app.get("/api/config", (_req, res) => {
+  res.json({ imageMode: IMAGE_MODE, sceneTags: SCENE_TAGS });
+});
+
 // ---------- Gemini: berättaren ----------
 
 const NARRATOR_SYSTEM = `Du är berättaren i ett interaktivt äventyrsspel baserat på bokserien Warriors (Erin Hunter), på svenska, för en läsare som är 10–12 år.
@@ -30,6 +48,7 @@ Svara ALLTID med enbart ett JSON-objekt, ingen annan text, inga markdown-staket:
 {
   "scene": "scentexten på svenska",
   "choices": ["val 1", "val 2", "val 3"],
+  "imageTag": "den tagg som bäst matchar scenens plats och stämning, exakt en av: ${SCENE_TAGS.join(", ")}",
   "imagePrompt": "an English prompt for an illustration of this exact scene, describing setting, lighting, mood and what the player's cat is doing. Do not describe the cat's appearance — a reference image is provided separately."
 }`;
 

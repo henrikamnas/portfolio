@@ -14,7 +14,7 @@ global.fetch = async (url, opts) => {
     const body = JSON.parse(opts.body);
     console.log("  → Gemini text-mock anropad, history-längd:", body.contents.length, "| systemInstruction:", !!body.systemInstruction, "| roller:", body.contents.map(c => c.role).join(","));
     return new Response(JSON.stringify({
-      candidates: [{ content: { parts: [{ text: '```json\n{"scene":"Gryningen färgar Åskklanens läger rosa.","choices":["Gå på jakt","Träffa mentorn","Smyg till gränsen"],"imagePrompt":"a forest camp at dawn"}\n```' }] } }],
+      candidates: [{ content: { parts: [{ text: '```json\n{"scene":"Gryningen färgar Åskklanens läger rosa.","choices":["Gå på jakt","Träffa mentorn","Smyg till gränsen"],"imageTag":"camp-dawn","imagePrompt":"a forest camp at dawn"}\n```' }] } }],
     }), { status: 200 });
   }
   if (String(url).includes("generativelanguage.googleapis.com")) {
@@ -57,6 +57,11 @@ setTimeout(async () => {
     { role: "user", content: "Jag väljer: Gå på jakt" },
   ] });
   check("narrate parsar JSON ur ```-staket", r.status === 200 && r.data.choices?.length === 3 && !!r.data.imagePrompt);
+  check("narrate returnerar imageTag för scenbanken", r.data.imageTag === "camp-dawn");
+
+  // 3b. config-endpoint för frontendens lägesval
+  const cfg = await realFetch("http://localhost:3457/api/config").then((x) => x.json());
+  check("config: bankläge som standard + tagglista", cfg.imageMode === "bank" && Array.isArray(cfg.sceneTags) && cfg.sceneTags.includes("moonstone"));
 
   // 4. scenbild med referens
   r = await post("/api/scene-image", { referenceBase64: FAKE_PNG, referenceMime: "image/png", scenePrompt: "a forest camp at dawn", style: "bokomslag" });
