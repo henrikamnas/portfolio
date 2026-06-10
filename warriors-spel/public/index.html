@@ -108,6 +108,19 @@
   }
   .character-plate{aspect-ratio:1/1; max-width:480px; margin:22px auto}
 
+  /* —— kartan: utforska territoriet —— */
+  .plate canvas{width:100%; height:100%; display:block; touch-action:none}
+  .map-action{
+    position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+    max-width:88%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    background:var(--amber); color:#241a08; border-color:var(--amber); font-weight:700;
+    box-shadow:0 4px 18px rgba(0,0,0,.5);
+  }
+  .map-hint{
+    position:absolute; top:10px; left:12px; font-size:.82rem; color:var(--parchment-dim);
+    background:rgba(14,23,18,.6); padding:4px 10px; border-radius:8px; pointer-events:none;
+  }
+
   /* —— tassavtryck-laddning —— */
   .loading{display:flex; flex-direction:column; align-items:center; gap:14px; padding:46px 0}
   .loading .whisper{color:var(--moon); font-style:italic}
@@ -238,7 +251,12 @@
     </div>
 
     <div id="game-content">
-      <div class="plate"><img id="scene-img" alt="Scenen"></div>
+      <div class="plate">
+        <img id="scene-img" alt="Scenen">
+        <canvas id="map-canvas" class="hidden"></canvas>
+        <div class="map-hint hidden" id="map-hint">Piltangenter eller tryck dit du vill gå</div>
+        <button class="map-action hidden" id="map-action" onclick="mapConfirm()"></button>
+      </div>
       <p class="scene-text" id="scene-text"></p>
       <div class="choices" id="choices"></div>
       <div class="freetext">
@@ -246,6 +264,7 @@
         <button onclick="chooseFree()">Gör det!</button>
       </div>
       <div class="toolrow">
+        <button onclick="toggleMap()" id="btn-map">🗺️ Utforska territoriet</button>
         <button onclick="document.getElementById('file-game').click()" id="btn-drawing">🎨 Lägg till en teckning i nästa scen</button>
         <input type="file" id="file-game" accept="image/*" class="hidden">
       </div>
@@ -483,6 +502,8 @@ async function advance(){
 
     // 3) visa
     state.sceneCount++;
+    state.lastChoices = turn.choices || [];
+    if (MAP.open) toggleMap(); // ny scen: tillbaka till berättelsevyn
     $("hud-moons").textContent = "🌙 Scen " + state.sceneCount;
     $("scene-text").textContent = turn.scene;
     const box = $("choices");
@@ -513,6 +534,169 @@ function choose(text){
   if (state.pendingDrawing) msg += ` (playerDrawingNote: spelaren har laddat upp en egen teckning av något som ska dyka upp i nästa scen — väv in det.)`;
   state.history.push({ role: "user", content: msg });
   advance();
+}
+
+// ─────────────────────────── kartan: utforska territoriet ───────────────────────────
+// Spelarens katt går omkring på territoriekartan. Fasta platser + berättarens
+// tre val (gyllene tassavtryck) kan triggas genom att gå fram till dem.
+const MAP = {
+  landmarks: [
+    { x: .50, y: .64, emoji: "🏕️", name: "Lägret",            action: "Jag går tillbaka till lägret" },
+    { x: .86, y: .26, emoji: "🌊", name: "Floden",            action: "Jag går ner till floden" },
+    { x: .15, y: .20, emoji: "🌳", name: "Fyrträden",         action: "Jag vandrar till Fyrträden" },
+    { x: .07, y: .72, emoji: "⛰️", name: "Månstenen",         action: "Jag vandrar den långa vägen mot Mormun och Månstenen" },
+    { x: .72, y: .80, emoji: "🌿", name: "Jaktmarkerna",      action: "Jag smyger ut till jaktmarkerna för att jaga" },
+    { x: .30, y: .90, emoji: "🌲", name: "Skuggklanens gräns", action: "Jag går till gränsen mot Skuggklanen" },
+    { x: .60, y: .46, emoji: "🍃", name: "Läkarkattens lya",  action: "Jag tittar in hos läkarkatten" },
+    { x: .38, y: .34, emoji: "🌾", name: "Träningssvackan",   action: "Jag går till träningssvackan för att öva kampgrepp" },
+  ],
+  choiceSlots: [[.46, .22], [.70, .60], [.22, .52]],
+  trees: Array.from({ length: 26 }, (_, i) => ({
+    // slumpade men stabila träd (samma skog varje gång)
+    x: ((i * 73) % 97) / 97, y: ((i * 41) % 89) / 89, big: i % 3 === 0,
+  })),
+  cat: { x: .5, y: .72, tx: null, ty: null },
+  keys: {}, raf: null, refImg: null, near: null, open: false,
+};
+
+function toggleMap(){
+  MAP.open = !MAP.open;
+  $("scene-img").classList.toggle("hidden", MAP.open);
+  $("map-canvas").classList.toggle("hidden", !MAP.open);
+  $("map-hint").classList.toggle("hidden", !MAP.open);
+  $("btn-map").textContent = MAP.open ? "📖 Tillbaka till berättelsen" : "🗺️ Utforska territoriet";
+  if (!MAP.open) { $("map-action").classList.add("hidden"); cancelAnimationFrame(MAP.raf); return; }
+
+  const c = $("map-canvas");
+  const dpr = window.devicePixelRatio || 1;
+  c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr;
+  if (state.reference && !MAP.refImg) {
+    MAP.refImg = new Image();
+    MAP.refImg.src = `data:${state.reference.mime};base64,${state.reference.base64}`;
+  }
+  mapLoop();
+}
+
+window.addEventListener("keydown", (e) => {
+  if (!MAP.open) return;
+  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","w","a","s","d"," "].includes(e.key)) e.preventDefault();
+  if (e.key === " ") return mapConfirm();
+  MAP.keys[e.key] = true;
+});
+window.addEventListener("keyup", (e) => { MAP.keys[e.key] = false; });
+document.addEventListener("DOMContentLoaded", () => {
+  $("map-canvas").addEventListener("pointerdown", (e) => {
+    const r = e.target.getBoundingClientRect();
+    MAP.cat.tx = (e.clientX - r.left) / r.width;
+    MAP.cat.ty = (e.clientY - r.top) / r.height;
+  });
+});
+
+function mapTargets(){
+  const t = MAP.landmarks.map((l) => ({ ...l, kind: "plats" }));
+  (state.lastChoices || []).forEach((choice, i) => {
+    const s = MAP.choiceSlots[i];
+    if (s) t.push({ x: s[0], y: s[1], emoji: "🐾", name: choice, action: choice, kind: "val" });
+  });
+  return t;
+}
+
+function mapConfirm(){
+  if (!MAP.near) return;
+  const action = MAP.near.action;
+  toggleMap();
+  choose(action);
+}
+
+function mapLoop(){
+  const c = $("map-canvas"), ctx = c.getContext("2d");
+  const W = c.width, H = c.height, u = W / 100; // u = ritskala
+
+  // — förflyttning —
+  const sp = .0040;
+  const k = MAP.keys, cat = MAP.cat;
+  let dx = (k.ArrowRight || k.d ? 1 : 0) - (k.ArrowLeft || k.a ? 1 : 0);
+  let dy = (k.ArrowDown || k.s ? 1 : 0) - (k.ArrowUp || k.w ? 1 : 0);
+  if (dx || dy) { cat.tx = null; const n = Math.hypot(dx, dy); cat.x += sp * dx / n; cat.y += sp * dy / n * 1.4; }
+  else if (cat.tx != null) {
+    const ddx = cat.tx - cat.x, ddy = cat.ty - cat.y, d = Math.hypot(ddx, ddy);
+    if (d < .008) cat.tx = null;
+    else { cat.x += sp * ddx / d; cat.y += sp * ddy / d * 1.4; }
+  }
+  cat.x = Math.min(.97, Math.max(.03, cat.x));
+  cat.y = Math.min(.95, Math.max(.05, cat.y));
+
+  // — marken —
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#16241a"); g.addColorStop(1, "#0d1810");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // floden i nordost
+  ctx.strokeStyle = "#2b4a52"; ctx.lineWidth = 7 * u;
+  ctx.beginPath(); ctx.moveTo(W * .72, 0);
+  ctx.quadraticCurveTo(W * .88, H * .3, W * 1.02, H * .52); ctx.stroke();
+  ctx.strokeStyle = "#3a5e68"; ctx.lineWidth = 1.2 * u;
+  ctx.beginPath(); ctx.moveTo(W * .73, 0);
+  ctx.quadraticCurveTo(W * .89, H * .3, W * 1.02, H * .50); ctx.stroke();
+
+  // skog
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  MAP.trees.forEach((t) => {
+    ctx.font = `${(t.big ? 4.5 : 3.2) * u}px serif`;
+    ctx.globalAlpha = .5;
+    ctx.fillText("🌲", t.x * W, t.y * H);
+    ctx.globalAlpha = 1;
+  });
+
+  // — platser och val —
+  const targets = mapTargets();
+  MAP.near = null;
+  let nearDist = .085;
+  targets.forEach((t) => {
+    const d = Math.hypot(t.x - cat.x, t.y - cat.y);
+    if (d < nearDist) { nearDist = d; MAP.near = t; }
+  });
+  const pulse = .6 + .4 * Math.sin(Date.now() / 350);
+  targets.forEach((t) => {
+    const px = t.x * W, py = t.y * H;
+    if (t.kind === "val") {
+      ctx.fillStyle = `rgba(224,164,60,${.16 * pulse})`;
+      ctx.beginPath(); ctx.arc(px, py, 6 * u, 0, 7); ctx.fill();
+    }
+    if (MAP.near === t) {
+      ctx.strokeStyle = "rgba(224,164,60,.85)"; ctx.lineWidth = .5 * u;
+      ctx.beginPath(); ctx.arc(px, py, 5 * u, 0, 7); ctx.stroke();
+    }
+    ctx.font = `${5 * u}px serif`;
+    ctx.fillText(t.emoji, px, py);
+    ctx.font = `${2.6 * u}px Grenze, serif`;
+    ctx.fillStyle = t.kind === "val" ? "#e0a43c" : "#c9bfa6";
+    const label = t.kind === "val" ? "🐾 val" : t.name;
+    ctx.fillText(label, px, py + 5.4 * u);
+  });
+
+  // — katten —
+  const cx = cat.x * W, cy = cat.y * H, R = 3.4 * u;
+  if (MAP.refImg && MAP.refImg.complete && MAP.refImg.naturalWidth) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.clip();
+    ctx.drawImage(MAP.refImg, cx - R, cy - R, R * 2, R * 2);
+    ctx.restore();
+    ctx.strokeStyle = "#e0a43c"; ctx.lineWidth = .4 * u;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
+  } else {
+    ctx.font = `${5.5 * u}px serif`;
+    ctx.fillText("🐱", cx, cy);
+  }
+
+  // — handlingsknappen —
+  const btn = $("map-action");
+  if (MAP.near) {
+    btn.textContent = (MAP.near.kind === "val" ? "🐾 " : "➜ ") + MAP.near.name;
+    btn.classList.remove("hidden");
+  } else btn.classList.add("hidden");
+
+  MAP.raf = requestAnimationFrame(mapLoop);
 }
 
 function chooseFree(){

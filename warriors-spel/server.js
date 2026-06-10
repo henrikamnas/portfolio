@@ -10,6 +10,8 @@ app.use(express.static(path.join(__dirname, "public")));
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const TEXT_MODEL = process.env.TEXT_MODEL || "gemini-2.5-flash";
+// reservberättare när huvudmodellen har "high demand"-spikar
+const TEXT_MODEL_FALLBACK = process.env.TEXT_MODEL_FALLBACK || "gemini-2.5-flash-lite";
 const IMAGE_MODEL = process.env.IMAGE_MODEL || "gemini-3.1-flash-image";
 
 // "bank" = förgenererade scenbilder i public/scenes/ (gratis — se /setup.html)
@@ -55,29 +57,41 @@ Svara ALLTID med enbart ett JSON-objekt, ingen annan text, inga markdown-staket:
 app.post("/api/narrate", async (req, res) => {
   try {
     const { history } = req.body; // [{role:"user"|"assistant", content:"..."}]
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${TEXT_MODEL}:generateContent`;
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": GEMINI_KEY },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: NARRATOR_SYSTEM }] },
-        contents: history.map((m) => ({
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
-        })),
-        generationConfig: {
-          maxOutputTokens: 3000,
-          responseMimeType: "application/json",
-          // 2.5-flash "tänker" som standard; tankarna räknas mot maxOutputTokens
-          // och behövs inte för berättandet — av ger snabbare och stabilare svar
-          thinkingConfig: { thinkingBudget: 0 },
-        },
-      }),
+    const body = JSON.stringify({
+      systemInstruction: { parts: [{ text: NARRATOR_SYSTEM }] },
+      contents: history.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      })),
+      generationConfig: {
+        maxOutputTokens: 3000,
+        responseMimeType: "application/json",
+        // 2.5-flash "tänker" som standard; tankarna räknas mot maxOutputTokens
+        // och behövs inte för berättandet — av ger snabbare och stabilare svar
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     });
+    // gratisnivån får ibland 429/503 ("high demand") — försök igen i tysthet,
+    // och fall till sist tillbaka på reservmodellen
+    const attempts = [TEXT_MODEL, TEXT_MODEL, TEXT_MODEL, TEXT_MODEL_FALLBACK];
+    let r;
+    for (let i = 0; i < attempts.length; i++) {
+      if (i) await new Promise((ok) => setTimeout(ok, 1500 * 2 ** (i - 1)));
+      r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${attempts[i]}:generateContent`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-goog-api-key": GEMINI_KEY },
+          body,
+        }
+      );
+      if (r.ok || (r.status !== 429 && r.status !== 503)) break;
+      console.warn(`Gemini text ${r.status} (${attempts[i]}) — försök ${i + 1}/${attempts.length}`);
+    }
     if (!r.ok) {
       const err = await r.text();
       console.error("Gemini text error:", err);
-      return res.status(502).json({ error: "Berättaren svarar inte. Kontrollera GEMINI_API_KEY." });
+      return res.status(502).json({ error: "Berättaren svarar inte just nu — vänta en liten stund och försök igen." });
     }
     const data = await r.json();
     const text = (data.candidates?.[0]?.content?.parts || [])
