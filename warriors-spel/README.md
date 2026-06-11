@@ -21,6 +21,14 @@ Allt ryms i Geminis gratisnivå.
    ```
 5. Öppna http://localhost:3000
 
+### Spela i molnet (valfritt)
+
+Repot innehåller en `render.yaml` för [Render](https://render.com) (gratis nivå):
+logga in med GitHub → *New + → Blueprint* → välj repot → fyll i `GEMINI_API_KEY`.
+Du får en publik adress som funkar direkt på iPad. Obs: dela inte adressen —
+alla som har den spelar på din API-kvot. Gratisnivån somnar efter en stunds
+inaktivitet; första sidladdningen efteråt tar ~en halv minut.
+
 ## Så funkar det
 
 ```

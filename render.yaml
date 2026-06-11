@@ -1,0 +1,15 @@
+# Render.com — gratis hosting av spelet direkt från GitHub-repot.
+# 1. Skapa konto på render.com (logga in med GitHub)
+# 2. New + → Blueprint → välj detta repo och denna branch
+# 3. Fyll i GEMINI_API_KEY när den efterfrågas — klart.
+services:
+  - type: web
+    name: warriors-spel
+    runtime: node
+    plan: free
+    rootDir: warriors-spel
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
