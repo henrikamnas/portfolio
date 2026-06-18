@@ -153,3 +153,67 @@ Testa en återställning innan du raderar Google-kopian.
 3. **Off-site backup-mål:** Hetzner Storage Box eller annat?
 
 När dessa är spikade kan nästa steg vara att jag genererar färdig `docker-compose.yml` + `.env`-mall, Tailscale-setup och backup-skript.
+
+---
+
+## Appendix A — Billigaste molnlagring (object storage)
+
+Alla tjänster nedan talar **S3-API:t**, så koden/verktygen blir desamma oavsett leverantör. Nyckeln: för en app du *bläddrar i* spelar **egress** (nedladdningstrafik) lika stor roll som lagringspriset. Ultrabilliga arkivtjänster är en fälla för aktiv användning.
+
+| Tjänst | Lagring / TB / mån | Egress | ~4 TB / mån | Bäst för |
+|---|---|---|---|---|
+| **iDrive e2** | ~$4 | gratis upp till 3× lagrat | **~$16** | Billigaste aktiva lagring |
+| **Hetzner Object Storage** | €4,99 | 1 TB/TB inkluderat | **~€20** | EU, redan i bilden |
+| Backblaze B2 | $6 | gratis via Cloudflare | ~$24 | Mogen, "free egress"-trick |
+| Cloudflare R2 | $15 | **noll** egress | ~$60 | Inga överraskningar, dyr lagring |
+| Wasabi | $6,99 | gratis 1:1 (min 1 TB/90 dgr) | ~$28 | — |
+| AWS Glacier Deep Archive | **~$1** | dyrt + ~12 h hämtning | ~$4 | **Endast** kall katastrof-backup |
+
+**Rekommendation:**
+- **App du bläddrar i:** iDrive e2 (billigast) eller Hetzner Object Storage (EU, förutsägbart). ~€16–24/mån för 4 TB.
+- **Ren off-site backup (sällan läst):** Glacier Deep Archive ~$1/TB — men räkna med hämtningsavgift och timmars väntan vid återställning.
+
+> Jämfört med hemma-servern i §3: 4 TB i molnet ≈ €16–24/mån ≈ €200–290/år *för alltid*. En disk hemma är en engångskostnad. Molnlagring vinner på noll hårdvara och off-site-säkerhet på köpet.
+
+## Appendix B — Bygga egen uppladdarapp mot object storage
+
+Detta är "bygg från scratch"-vägen. Fullt görbart, men var medveten: en *uppladdare* är ett par helger; en *tittare/galleri* ovanpå drar dig tillbaka mot att återimplementera Immich.
+
+### Arkitektur
+
+```
+[Telefon-app]  --presigned PUT-->  [S3-bucket (Hetzner/B2/iDrive/R2)]
+      |
+      +--be om presigned URL-->  [Liten backend / serverless funktion]
+                                  (håller hemliga nycklar, mintar URL:er)
+```
+
+1. **Lagring:** en S3-kompatibel bucket hos valfri leverantör ovan.
+2. **Hemligheter — aldrig master-nyckeln i appen.** Två mönster:
+   - **(rek.) Presigned URLs:** en liten backend (Cloudflare Worker / serverless / mini-VPS) tar emot "jag vill ladda upp fil X", verifierar dig och returnerar en tidsbegränsad presigned PUT-URL. Appen laddar upp **direkt** till bucketen. Nycklarna lämnar aldrig servern.
+   - **Scoped application key:** t.ex. B2-nyckel låst till en bucket, inbäddad i appen. Enklare men svagare; gå med presigned om du kan.
+3. **Mobilapp** — välj cross-platform (**Flutter** eller **React Native**) eller native (Kotlin/Swift). Ansvar:
+   - Läsa kamerarullen (foto-behörighet).
+   - Lokal **SQLite** över vad som laddats upp (per innehålls-**hash**) → dedup + återupptagning.
+   - Per fil: hasha → be om presigned URL → ladda upp (**multipart/resumable** för stora videor) → markera klar.
+   - **Bakgrundskörning:** Android **WorkManager** (pålitlig periodisk uppladdning); iOS **BGProcessingTask** (best effort, samma Apple-begränsning som Immich).
+   - Hantera **HEIC/HEVC**, stora videor, återförsök, endast-Wi-Fi, batteri.
+4. **Index/metadata:** för att kunna hitta/visa bilder senare behövs ett index (filnamn, datum, EXIF, hash) — antingen en manifest-fil i bucketen eller en liten DB. Detta är vad som gör att du senare behöver en **tittare** (web/app), och då närmar du dig Immichs omfång.
+5. **Visning:** presigned GET-URL:er eller en enkel webbfrontend.
+
+### Enklaste vägen om målet är "bilder i molnet", inte att koda
+
+Du behöver inte skriva en app alls för att uppnå uppladdningen:
+- **rclone** kan synka en mapp/kamerarulle till valfri S3-bucket (skript/schemalagt).
+- Färdiga auto-upload-appar (t.ex. **PhotoSync**, eller **Autosync/FolderSync** på Android) laddar upp kamerarullen till S3-kompatibel lagring — noll kod, fungerar idag.
+
+Bygg egen app främst om själva byggandet/lärandet är poängen, eller om du vill ha specifik funktion ingen färdig lösning ger.
+
+### Ärlig jämförelse av de tre vägarna
+
+| Väg | Arbete | Funktion (galleri/sök/album) | Månadskostnad (~4 TB) |
+|---|---|---|---|
+| Immich (hemma) | Lågt (drift) | Full | ~€2–3 el + backup |
+| Immich (moln-VPS) | Lågt–medel | Full | ~€18–28 |
+| Egen app + object storage | Medel (app) → Högt (om tittare) | Bara det du bygger | ~€16–24 lagring |
+| rclone/färdig app + object storage | Lågt | Ingen tittare (bara filer i bucket) | ~€16–24 lagring |
