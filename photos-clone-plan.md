@@ -253,3 +253,44 @@ Utbyggbarhet börjar med chassit: köp något med fler diskfack än du fyller id
 
 - **Lågt krångel:** UGREEN DXP4800 Plus + 2× 12 TB (1 disk redundans) + en liten NVMe för OS/DB. Väx genom att fylla resterande fack en disk i taget. Off-site backup via restic till Storage Box.
 - **Billigast/mest flexibelt:** begagnat/byggt torn med 6 fack + Unraid + 2× stor HDD + 1 paritetsdisk + SSD för DB. Lägg till diskar när priset är rätt.
+
+---
+
+## Appendix D — Vad kostar den lokala lagringen?
+
+Priser i EUR, ungefärliga (≈ USD just nu), och fluktuerar dagligen. Diskpriser per TB är lägst i **16–22 TB-spannet** (~€12–13/TB nytt, ~€7–10/TB för begagnade enterprise-diskar).
+
+### Startkostnad (engång)
+
+| | A: Färdig NAS (lågt krångel) | B: DIY-torn + Unraid (billigast) |
+|---|---|---|
+| Bas | UGREEN DXP4800 Plus (diskless) ~€600 | Begagnat/byggt torn (Quick Sync-CPU, 16 GB RAM, PSU, chassi) ~€250–400 |
+| Mjukvara | Gratis (Docker direkt, eller Unraid/TrueNAS) | Unraid Starter $49 ≈ €46 (gratis: mergerfs+SnapRAID) |
+| Diskar (data) | 2× 16 TB, 1 = paritet → ~16 TB användbart ~€380 | 2× 16 TB, 1 = paritet ~€380 (begagnat ~€220) |
+| SSD/NVMe (OS + Immich-DB) | ~€40 | ~€40 |
+| (ev. RAM-uppgradering) | ~€40–80 | ingår ovan |
+| **Summa upfront** | **~€1 060–1 100** | **~€720–870** (mindre med begagnat) |
+
+### Löpande kostnad (per månad)
+
+| Post | Kostnad | Notering |
+|---|---|---|
+| **El** | ~€4–7/mån | ~30–50 W i snitt × 24/7 ≈ 260–440 kWh/år. Vid ~2 SEK/kWh ≈ 500–900 SEK/år. Diskar som spinner ner drar mindre. |
+| **Off-site backup** | ~€13/mån (5 TB Storage Box), ~€20/mån (10 TB) | **Detta är den största löpande posten.** Krypterad restic-backup av bibliotek + DB. |
+| Fjärråtkomst (Tailscale) | €0 | Gratis för privat bruk. |
+| **Summa löpande** | **~€17–27/mån** | Varav backup ~€13–20. Hoppar du över moln-backup (t.ex. backup till väns hus) → bara el, ~€4–7/mån. |
+
+> **Den löpande kostnaden domineras alltså av valet av off-site backup, inte av servern själv.** Servern hemma kostar i princip bara el att driva.
+
+### Kostnad att växa
+
+Att utöka = priset för en disk. ~€12–13/TB nytt, ~€7–10/TB begagnat enterprise. En extra 16 TB-disk ≈ €180–220. Med Unraid/SnapRAID slänger du in den i ett ledigt fack — ingen omkonfiguration, ingen ny array.
+
+### Jämförelse mot moln över tid (≈ 10 TB foton, 5 år)
+
+| | Upfront | Löpande | 5 år totalt | Du äger |
+|---|---|---|---|---|
+| **Lokal (B + 10 TB Storage Box-backup)** | ~€800 | ~€25/mån | **~€2 300** | Hårdvaran + kapacitet att växa vidare |
+| **Allt-i-molnet** (object storage, ~€5/TB för 10 TB) | €0 | ~€50/mån | **~€3 000** | Inget; kostnaden växer linjärt med datan |
+
+**Tumregel:** under ~2 TB är molnet billigast på kort sikt (ingen upfront). Från några TB och uppåt — och särskilt när samlingen växer — vinner lokalt tydligt, eftersom kapaciteten är köpt en gång medan molnet kostar per TB varje månad för alltid.
