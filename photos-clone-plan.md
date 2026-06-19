@@ -294,3 +294,37 @@ Att utöka = priset för en disk. ~€12–13/TB nytt, ~€7–10/TB begagnat en
 | **Allt-i-molnet** (object storage, ~€5/TB för 10 TB) | €0 | ~€50/mån | **~€3 000** | Inget; kostnaden växer linjärt med datan |
 
 **Tumregel:** under ~2 TB är molnet billigast på kort sikt (ingen upfront). Från några TB och uppåt — och särskilt när samlingen växer — vinner lokalt tydligt, eftersom kapaciteten är köpt en gång medan molnet kostar per TB varje månad för alltid.
+
+---
+
+## Appendix E — Om du börjar litet (2–3 TB)
+
+Vid 2–3 TB ändras kalkylen rejält: du behöver inte de stora 16 TB-diskarna eller en dyr 4-facks-NAS direkt. Notera dock att **små diskar är dyra per TB** — en 8 TB-disk (~€15/TB) är bättre köp än en 4 TB (~€20/TB), så börja hellre med 8 TB även om du bara fyller 2–3 TB: då har du växtutrymme på köpet.
+
+### Tre startnivåer
+
+| | Upfront | Löpande | Utbyggbar? |
+|---|---|---|---|
+| **1. Minimalt lokalt** – N100 mini-PC (16 GB, 512 GB SSD) ~€170 + 1× 8 TB ~€140 | **~€280–310** | ~€2/mån el + ~€3/mån kall off-site backup ≈ **~€5/mån** | Svagt (1–2 diskar). Migrera till NAS när du växer. |
+| **2. Billig expanderbar** – begagnad SFF/torn-PC (4 SATA) ~€100–150 + Unraid $49 + 2× 8 TB (1 paritet → 8 TB) ~€280 | **~€430–480** | ~€4–6/mån el + ~€3–11/mån backup ≈ **~€7–17/mån** | ✅ Bra – lägg till disk i ledigt fack |
+| **3. Färdig 4-facks-NAS** – UGREEN DXP4800 Plus ~€600 + 2× 8 TB (1 paritet) ~€280 + NVMe €40 | **~€920** | ~€4–6/mån el + backup | ✅ Bäst – plug & play, 4→9 fack |
+
+> N100-mini-PC drar bara ~10–15 W → el ~€2/mån. En NAS med flera diskar ~30–40 W → ~€4–6/mån.
+
+### Off-site backup vid liten datamängd
+
+Här är haken: att backa 3 TB till **het** molnlagring (iDrive e2 ~$4/TB) kostar ~€11/mån — ungefär lika mycket som att bara ha allt i molnet. För backup du sällan återställer, välj **kall** lagring (AWS Glacier Deep Archive ~$1/TB → ~€3/mån för 3 TB), eller gör det gratis via en andra disk + en kopia hos familj/vän.
+
+### Lokalt vs moln vid 3 TB
+
+| | Upfront | Löpande | Bryt mot moln |
+|---|---|---|---|
+| **Allt-i-molnet** (object storage ~€5/TB, 3 TB) | €0 | ~€11–15/mån | — |
+| **Minimalt lokalt (nivå 1)** + kall backup | ~€290 | ~€5/mån | Sparar ~€8–10/mån → **break-even ~2,5–3 år** |
+| **Billig expanderbar (nivå 2)** | ~€450 | ~€7–10/mån | Break-even ~4–6 år, men byggt för att växa |
+
+### Rekommendation för din situation (vill kunna växa)
+
+Eftersom du sagt att du vill kunna **utöka med tiden**, är **nivå 2 (begagnad SFF/torn + Unraid + 2× 8 TB)** den bästa balansen: billig start (~€450), riktig redundans, och du lägger bara till en disk i taget när du växer — utan att köpa om boxen. Vill du ha noll krångel och snygg hårdvara: nivå 3. Vill du bara komma igång billigast möjligt och bryr dig mindre om elegant expansion: nivå 1, och migrera senare.
+
+Oavsett nivå: börja med **8 TB-diskar** (inte 4 TB) för bättre pris/TB och växtutrymme, och kör Immichs databas på SSD/NVMe.
