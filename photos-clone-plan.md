@@ -217,3 +217,39 @@ Bygg egen app främst om själva byggandet/lärandet är poängen, eller om du v
 | Immich (moln-VPS) | Lågt–medel | Full | ~€18–28 |
 | Egen app + object storage | Medel (app) → Högt (om tittare) | Bara det du bygger | ~€16–24 lagring |
 | rclone/färdig app + object storage | Lågt | Ingen tittare (bara filer i bucket) | ~€16–24 lagring |
+
+---
+
+## Appendix C — Lokal lagring som går att utöka med tiden
+
+Nyckelinsikten: att kunna växa billigt över tid handlar mindre om hårdvaran och mer om vilken **lagringsteknik** du väljer. Du vill kunna lägga till **en disk i taget**, gärna i **blandade storlekar** ("4 TB idag, 16 TB när de är billiga"), och ändå ha skydd mot diskhaveri.
+
+### Lagringsteknik — utbyggbarhet vs robusthet
+
+| Teknik | Lägg till 1 disk i taget? | Blandade storlekar? | Skydd | Kommentar |
+|---|---|---|---|---|
+| **Unraid** | ✅ Ja | ✅ Ja | Paritet (1–2 diskar) | Bäst UX för stegvis växt. ~$49–129 engång. Kör Immich i Docker direkt. |
+| **mergerfs + SnapRAID** | ✅ Ja | ✅ Ja | Schemalagd paritet | Gratis motsvarighet till Unraid. Paritet körs periodiskt (perfekt för foton: skriv-en-gång). Mer manuellt. |
+| **Synology SHR** | ⚠️ Väx genom att byta upp diskar | ✅ Ja | RAID-1/-2 | Nybörjarvänligt, men bundet till Synologys hårdvara. |
+| **ZFS (RAIDZ)** | ❌ Klumpigt (lägg till hela vdev; även med OpenZFS 2.3-expansion gillar den matchade diskar) | ❌ Helst lika stora | Realtids-checksums, scrub, snapshots | **Mest robust för dataintegritet**, men sämst för casual stegvis växt. ZFS-**speglar** (par i taget) är ett mellanting. |
+
+**För en fotosamling (skriv-en-gång, läs-ofta) som ska växa billigt: Unraid eller mergerfs+SnapRAID är bäst.** Varje disk innehåller hela filer (läsbara var för sig), diskar kan spinna ner → låg effekt, och du lägger till valfri disk när som helst. ZFS är överlägset på integritet men passar sämre när målet är "slänga in en disk då och då".
+
+### Hårdvara — välj fler fack än du behöver nu
+
+Utbyggbarhet börjar med chassit: köp något med fler diskfack än du fyller idag.
+
+- **Färdig NAS (enklast):** **UGREEN DXP4800 Plus** är 2026 års prisvärda val — 4 fack (utbyggbart mot fler via NVMe), Intel med **Quick Sync** (bra för Immichs videotranskodning + ML), 8 GB DDR5 (upp till 64 GB), **inga disklåsningar**, ~$640. Kör Immich i Docker direkt, eller installera TrueNAS/Unraid på den. QNAP TS-464 är likvärdig. Synology har dragit åt disklåsning — undvik om du vill ha frihet.
+- **Bygg själv (billigast/flexiblast):** ett tornchassi med 6–8 fack + Unraid (eller mergerfs+SnapRAID på Debian). Återanvänd gammal hårdvara om du har; annars en Intel-plattform med Quick Sync. Max diskfrihet per krona.
+
+### Disk- och layoutstrategi
+
+1. **Skilj snabb och stor lagring:** Immichs **databas + OS på SSD** (gärna NVMe), **fotobiblioteket på HDD-arrayen**. DB:n vill ha snabb disk; bilderna inte.
+2. **Starta lagom, lämna fack tomma:** t.ex. 2× 8–12 TB med en disk paritet → börja runt 8–12 TB användbart, väx genom att fylla facken.
+3. **Välj teknik som tillåter enskild, blandad expansion** (Unraid/SnapRAID/SHR) — inte strikt RAIDZ.
+4. **Paritet/RAID är INTE backup.** §5:s 3-2-1 gäller fortfarande: en lokal kopia till + en krypterad off-site (t.ex. Hetzner Storage Box eller object storage från Appendix A).
+
+### Konkret startförslag
+
+- **Lågt krångel:** UGREEN DXP4800 Plus + 2× 12 TB (1 disk redundans) + en liten NVMe för OS/DB. Väx genom att fylla resterande fack en disk i taget. Off-site backup via restic till Storage Box.
+- **Billigast/mest flexibelt:** begagnat/byggt torn med 6 fack + Unraid + 2× stor HDD + 1 paritetsdisk + SSD för DB. Lägg till diskar när priset är rätt.
